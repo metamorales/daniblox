@@ -1,3 +1,4 @@
+import { Settings } from './Settings';
 import { Sidebar } from './Sidebar';
 import styles from './Shell.module.css';
 import { Wordmark } from './Wordmark';
@@ -17,6 +18,7 @@ export function Shell() {
 
       <div class={styles.panel}>
         <Sidebar />
+        <Settings />
       </div>
 
       {toast.value && (

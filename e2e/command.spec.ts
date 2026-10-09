@@ -14,7 +14,7 @@ test.describe('talking to Luciana', () => {
   };
 
   const lines = (page: import('@playwright/test').Page): Promise<string[]> =>
-    page.$$eval('aside li', (els) => els.map((e) => e.textContent ?? ''));
+    page.$$eval('aside li[data-line]', (els) => els.map((e) => e.textContent ?? ''));
 
   test('answers a greeting without doing anything', async ({ page }) => {
     await say(page, 'hello');

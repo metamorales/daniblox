@@ -176,3 +176,25 @@ What does not change: her prompt will not contain text engineered to work around
 
 What: the model brain still caps at ten requests a minute with a visible counter.
 Why: the owner kept it. It is a spend guard against a loop, and a person typing by hand rarely reaches it.
+
+## M5-1 — The default model is local and Apache licensed (2026-10-09)
+
+What: the openai-compatible default points at http://localhost:11434/v1 with qwen2.5:7b, which is what Ollama serves locally. Anthropic's default is claude-haiku-4-5-20251001.
+Why: a local model needs no key, costs nothing and sends nothing off the machine, which suits a demo anyone can clone. Qwen2.5 7B is Apache 2.0.
+Caught during setup: the 3B of the same family is under the Qwen Research Licence, research use only, so it was removed and replaced. The project never redistributes a model, but the default should be one anybody can use for anything.
+
+## M5-2 — A transport failure never retries (2026-10-09)
+
+What: a malformed reply is retried once with the complaint attached. A timeout, a refused connection, a blocked request, a bad key or a server error falls back at once, and two in a row open a circuit breaker for a minute.
+Why: spec R2's single retry is for schema failures. Retrying a ten-second timeout would mean twenty seconds of silence, and retrying a refused connection just fails twice.
+Verified live against a local server: a dead address and a wrong model name each fell back to her own words, showed a banner naming the cause, and still carried out the command.
+
+## M5-3 — Chat lines carry a marker so tests can count them (2026-10-09)
+
+What: real chat lines have a data attribute; the empty-state placeholder does not.
+Why: the placeholder is also a list item, so counting list items was off by one and the tests were reading job reports as her speech.
+
+## M5-4 — Tests that break the network opt out of the console guard (2026-10-09)
+
+What: a fixture flag lets a test allow browser-generated resource errors.
+Why: the browser logs a refused request by itself and the page cannot silence it. Without the flag, deliberately testing a failure would fail on the noise it was meant to cause.

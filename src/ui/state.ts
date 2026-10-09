@@ -61,3 +61,36 @@ export function clearChat(): void {
  * knowing anything about the world.
  */
 export const onCommand = signal<(text: string) => void>(() => undefined);
+
+// --- the model, if the player plugs one in ---
+
+export interface ModelSettings {
+  readonly provider: 'openai' | 'anthropic';
+  readonly baseUrl: string;
+  readonly model: string;
+  readonly remember: boolean;
+}
+
+export interface ModelRequest extends ModelSettings {
+  readonly apiKey: string;
+}
+
+export interface BrainStatusView {
+  readonly used: number;
+  readonly limit: number;
+  readonly error: string | null;
+}
+
+export const modelSettings = signal<ModelSettings>({
+  provider: 'openai',
+  baseUrl: 'http://localhost:11434/v1',
+  model: 'qwen2.5:7b',
+  remember: false,
+});
+
+/** Which brain answered the last turn, for the badge beside the panel. */
+export const brainMode = signal<'scripted' | 'model'>('scripted');
+export const brainStatus = signal<BrainStatusView | null>(null);
+
+export const onApplyModel = signal<(settings: ModelRequest) => void>(() => undefined);
+export const onForgetKey = signal<() => void>(() => undefined);

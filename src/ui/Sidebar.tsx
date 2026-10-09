@@ -52,6 +52,7 @@ export function Sidebar() {
         {lines.map((line) => (
           <li
             key={line.id}
+            data-line={line.who}
             class={`${styles.line} ${line.who === 'player' ? styles.fromPlayer : styles.fromKit}`}
           >
             {line.text}

@@ -13,12 +13,22 @@ declare global {
  * Every test fails if the page logged a console error, threw, or left an
  * unhandled promise rejection (spec R11.1).
  */
-export const test = base.extend<{ consoleGuard: void }>({
+export const test = base.extend<{ consoleGuard: void; allowNetworkNoise: boolean }>({
+  /**
+   * Tests that break the network on purpose set this. The browser logs a
+   * failed request by itself, which is not our code misbehaving, and there is
+   * no way to silence it from the page.
+   */
+  allowNetworkNoise: [false, { option: true }],
+
   consoleGuard: [
-    async ({ page }, use) => {
+    async ({ page, allowNetworkNoise }, use) => {
       const problems: string[] = [];
+      const networkNoise = /Failed to load resource|net::ERR_|ERR_CONNECTION/i;
       page.on('console', (message) => {
-        if (message.type() === 'error') problems.push(`console.error: ${message.text()}`);
+        if (message.type() !== 'error') return;
+        if (allowNetworkNoise && networkNoise.test(message.text())) return;
+        problems.push(`console.error: ${message.text()}`);
       });
       page.on('pageerror', (error) => problems.push(`pageerror: ${error.message}`));
       await page.addInitScript(() => {

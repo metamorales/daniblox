@@ -7,15 +7,31 @@
  * puts it on the screen.
  */
 
+import { LlmBrain, type LlmSettings } from '../brain/llm';
 import { ScriptedBrain } from '../brain/scripted';
-import type { Brain, ChatTurn } from '../brain/brain';
+import type { ChatTurn } from '../brain/brain';
 import { validate } from '../brain/schema';
 import { ActionQueue, type ActionWorld } from '../folk/actions';
 import type { Kit } from '../folk/kit';
 import { blockById } from '../world/blocks';
 import type { Situation } from '../chat/dialogue';
 import type { WorldView } from '../render/scene';
-import { addLine, announce, kitStatus, onCommand, showToast, thinking } from '../ui/state';
+import {
+  addLine,
+  announce,
+  brainMode,
+  brainStatus,
+  kitStatus,
+  modelSettings,
+  onApplyModel,
+  onCommand,
+  onForgetKey,
+  showToast,
+  thinking,
+} from '../ui/state';
+import { forgetKey, getKey, restoreKey, setKey } from './keyStore';
+import { blockById as lookupBlock } from '../world/blocks';
+import type { PromptSituation } from '../brain/prompt';
 import type { FixedLoop } from './loop';
 
 /** How many turns of back-and-forth the model brain will be shown in M5. */
@@ -94,8 +110,8 @@ export interface Game {
 }
 
 export function createGame(view: WorldView, loop: FixedLoop): Game {
-  const brain: Brain & { reply?: unknown } = new ScriptedBrain();
-  const scripted = brain as ScriptedBrain;
+  const scripted = new ScriptedBrain();
+  let model: LlmBrain | null = null;
   const history: ChatTurn[] = [];
   const queues = new Map<string, ActionQueue>();
 
@@ -145,6 +161,104 @@ export function createGame(view: WorldView, loop: FixedLoop): Game {
     };
   }
 
+  /** What the model is told it can see. Costs nothing when no model is set. */
+  function promptSituation(kit: Kit): PromptSituation {
+    const cell = kit.cell;
+    const counts = new Map<number, number>();
+    for (let dx = -8; dx <= 8; dx++) {
+      for (let dy = -4; dy <= 4; dy++) {
+        for (let dz = -8; dz <= 8; dz++) {
+          const id = view.world.get(cell.x + dx, cell.y + dy, cell.z + dz);
+          if (id !== 0) counts.set(id, (counts.get(id) ?? 0) + 1);
+        }
+      }
+    }
+    const under = view.world.get(cell.x, cell.y - 1, cell.z);
+    return {
+      cell,
+      standingOn: lookupBlock(under)?.label ?? null,
+      dayPhase: loop.dayPhase,
+      activity: kit.activity,
+      queued: [],
+      carrying: [...kit.inventory.entries()]
+        .map(([id, count]) => ({ label: lookupBlock(id)?.label ?? 'something', count }))
+        .sort((a, b) => b.count - a.count),
+      nearby: [...counts.entries()]
+        .map(([id, count]) => ({ label: lookupBlock(id)?.label ?? 'something', count }))
+        .sort((a, b) => b.count - a.count)
+        .slice(0, 4),
+      otherKits: view.kits
+        .filter((other) => other.id !== kit.id)
+        .map((other) => ({ name: other.name, doing: other.activity ?? 'nothing' })),
+      reticle: view.orbit.targetCell(),
+      pointingAt: view.pointedAt(),
+    };
+  }
+
+  function useModel(settings: LlmSettings): void {
+    model = new LlmBrain(settings, scripted, {
+      onStatus: (status) => {
+        brainMode.value = status.mode === 'model' ? 'model' : 'scripted';
+        brainStatus.value = { used: status.used, limit: status.limit, error: status.error };
+      },
+    });
+    brainMode.value = 'model';
+    brainStatus.value = { used: 0, limit: 10, error: null };
+  }
+
+  onApplyModel.value = (request) => {
+    setKey(request.apiKey, request.remember);
+    modelSettings.value = {
+      provider: request.provider,
+      baseUrl: request.baseUrl,
+      model: request.model,
+      remember: request.remember,
+    };
+    useModel({
+      provider: request.provider,
+      baseUrl: request.baseUrl,
+      model: request.model,
+      apiKey: getKey(),
+    });
+    showToast(`Luciana is thinking with ${request.model}.`);
+  };
+
+  onForgetKey.value = () => {
+    forgetKey();
+    model = null;
+    brainMode.value = 'scripted';
+    brainStatus.value = null;
+    showToast('Back to her own words.');
+  };
+
+  // A key the player chose to keep for this tab survives a reload.
+  const restored = restoreKey();
+  if (restored) {
+    const saved = modelSettings.value;
+    useModel({
+      provider: saved.provider,
+      baseUrl: saved.baseUrl,
+      model: saved.model,
+      apiKey: restored,
+    });
+  }
+
+  function run(
+    output: { say: string; actions: readonly import('../brain/schema').Action[] },
+    kit: Kit,
+  ): void {
+    addLine('kit', output.say);
+    remember('kit', output.say);
+
+    if (output.actions.length > 0) {
+      const queue = queues.get(kit.id);
+      // A new order replaces the old one rather than queueing behind it.
+      queue?.clear();
+      queue?.push(output.actions);
+      announce(`${kit.name} is starting: ${output.actions[0]?.type ?? 'something'}`);
+    }
+  }
+
   function send(text: string): void {
     const trimmed = text.trim();
     if (!trimmed) return;
@@ -155,9 +269,9 @@ export function createGame(view: WorldView, loop: FixedLoop): Game {
     remember('player', trimmed);
     thinking.value = true;
 
-    const output = scripted.reply({
+    const payload = {
       text: trimmed,
-      source: 'user',
+      source: 'user' as const,
       folk: kit,
       world: {
         reticle: view.orbit.targetCell(),
@@ -165,28 +279,38 @@ export function createGame(view: WorldView, loop: FixedLoop): Game {
         dayPhase: loop.dayPhase,
         kitNames: view.kits.map((k) => k.name),
       },
-      history,
+      history: [...history],
       situation: situationOf(kit),
-    });
+    };
+
+    if (model) {
+      // The model answers when it can. Everything degrades to her own words.
+      void model
+        .respond({ ...payload, situation: promptSituation(kit) })
+        .then((output) => {
+          thinking.value = false;
+          const checked = validate(output);
+          if (!checked.ok) {
+            showToast('Luciana said something I could not make sense of.');
+            return;
+          }
+          run(checked.value, kit);
+        })
+        .catch(() => {
+          thinking.value = false;
+          run(scripted.reply(payload), kit);
+        });
+      return;
+    }
 
     // Everything a brain says goes through the schema, including this one.
-    const checked = validate(output);
+    const checked = validate(scripted.reply(payload));
     thinking.value = false;
     if (!checked.ok) {
       showToast('Luciana said something I could not make sense of.');
       return;
     }
-
-    addLine('kit', checked.value.say);
-    remember('kit', checked.value.say);
-
-    if (checked.value.actions.length > 0) {
-      const queue = queues.get(kit.id);
-      // A new order replaces the old one rather than queueing behind it.
-      queue?.clear();
-      queue?.push(checked.value.actions);
-      announce(`${kit.name} is starting: ${checked.value.actions[0]?.type ?? 'something'}`);
-    }
+    run(checked.value, kit);
   }
 
   onCommand.value = send;
