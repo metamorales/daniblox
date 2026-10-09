@@ -92,6 +92,39 @@ function pickSites(
   return chosen;
 }
 
+/**
+ * One tree: a two-high trunk under a rounded canopy of real voxels, with the
+ * radius and squash varied per position so no two are the same shape.
+ * Shared with the plant power, so a tree Luciana grows matches the forest.
+ */
+export function plantTree(world: World, x: number, z: number, ground: number, seed: number): void {
+  const trunkTop = ground + 2;
+  world.set(x, ground + 1, z, BLOCK.bark);
+  world.set(x, trunkTop, z, BLOCK.bark);
+
+  const variation = hashUnit(x, 7, z, seed);
+  const radius = 1.7 + variation * 0.9;
+  const squash = 0.75 + hashUnit(x, 11, z, seed) * 0.45;
+  const centreY = trunkTop + 1;
+
+  for (let dy = -1; dy <= 2; dy++) {
+    for (let dx = -3; dx <= 3; dx++) {
+      for (let dz = -3; dz <= 3; dz++) {
+        const y = centreY + dy;
+        if (y >= WORLD_Y) continue;
+        const vertical = dy / squash;
+        const span = Math.sqrt(dx * dx + dz * dz + vertical * vertical);
+        // A little per-voxel jitter keeps the silhouette from reading as a
+        // mathematical sphere.
+        const jitter = hashUnit(x + dx, y, z + dz, seed ^ 0x27d4eb2f) * 0.5;
+        if (span > radius + jitter) continue;
+        if (world.get(x + dx, y, z + dz) !== BLOCK.air) continue;
+        world.set(x + dx, y, z + dz, BLOCK.sprout);
+      }
+    }
+  }
+}
+
 export function generate(world: World, seed = world.seed): TerrainStats {
   const heights = heightField(seed);
   const heightAt = (x: number, z: number): number => heights[z * WORLD_X + x] ?? MIN_HEIGHT;
@@ -135,36 +168,7 @@ export function generate(world: World, seed = world.seed): TerrainStats {
   };
 
   const treeSites = pickSites(rng, TREE_COUNT, canPlant, 4);
-  for (const [x, z] of treeSites) {
-    const h = heightAt(x, z);
-    const trunkTop = h + 2;
-    world.set(x, h + 1, z, BLOCK.bark);
-    world.set(x, trunkTop, z, BLOCK.bark);
-
-    // A rounded canopy of real voxels. Radius and squash vary per tree, so no
-    // two are the same shape.
-    const variation = hashUnit(x, 7, z, seed);
-    const radius = 1.7 + variation * 0.9;
-    const squash = 0.75 + hashUnit(x, 11, z, seed) * 0.45;
-    const centreY = trunkTop + 1;
-
-    for (let dy = -1; dy <= 2; dy++) {
-      for (let dx = -3; dx <= 3; dx++) {
-        for (let dz = -3; dz <= 3; dz++) {
-          const y = centreY + dy;
-          if (y >= WORLD_Y) continue;
-          const vertical = dy / squash;
-          const distance = Math.sqrt(dx * dx + dz * dz + vertical * vertical);
-          // A little per-voxel jitter keeps the silhouette from reading as a
-          // mathematical sphere.
-          const jitter = hashUnit(x + dx, y, z + dz, seed ^ 0x27d4eb2f) * 0.5;
-          if (distance > radius + jitter) continue;
-          if (world.get(x + dx, y, z + dz) !== BLOCK.air) continue;
-          world.set(x + dx, y, z + dz, BLOCK.sprout);
-        }
-      }
-    }
-  }
+  for (const [x, z] of treeSites) plantTree(world, x, z, heightAt(x, z), seed);
 
   // --- a few painted plinths, so the building block exists in the world ---
   const flatClover = (x: number, z: number): boolean => {
