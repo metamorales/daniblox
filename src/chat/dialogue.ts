@@ -10,7 +10,7 @@
  * asks a companion standing next to them, and say so plainly otherwise.
  */
 
-import card from './luciana.json';
+import { cardFor, type Card } from './cards';
 
 export interface Situation {
   readonly activity: string | null;
@@ -21,7 +21,8 @@ export interface Situation {
   readonly dayPhase: number;
 }
 
-export const CARD = card;
+/** Luciana's card, the default voice; the others come through `cardFor`. */
+export const CARD: Card = cardFor('luciana');
 
 /** Deterministic pick, so the same question twice gives the same answer. */
 function pick<T>(options: readonly T[], seed: string): T {
@@ -77,7 +78,7 @@ function doingPhrase(situation: Situation): string {
 
 interface Question {
   readonly test: RegExp;
-  reply(situation: Situation, seed: string): string;
+  reply(situation: Situation, seed: string, card: Card): string;
 }
 
 const QUESTIONS: readonly Question[] = [
@@ -118,9 +119,9 @@ const QUESTIONS: readonly Question[] = [
   },
   {
     test: /\bhow are you\b|\byou (alright|ok|okay)\b|\bhow.*feeling\b/i,
-    reply: (s, seed) =>
+    reply: (s, seed, card) =>
       pick(
-        [`${sentenceCase(CARD.mood)}, as usual.`, `Fine. ${sentenceCase(doingPhrase(s))}.`],
+        [`${sentenceCase(card.mood)}, as usual.`, `Fine. ${sentenceCase(doingPhrase(s))}.`],
         seed,
       ),
   },
@@ -145,12 +146,12 @@ const QUESTIONS: readonly Question[] = [
     // and "what are you carrying" are asked far more often than "who are you",
     // and a loose pattern here swallows both.
     test: /\bwho are you\b|\bwhat are you\??$|\byour name\b|\bwhat kind of\b/i,
-    reply: (_s, seed) =>
+    reply: (_s, seed, card) =>
       pick(
         [
-          `I am ${CARD.name}. ${CARD.bio[0] ?? ''}`,
-          `${CARD.name}. ${CARD.bio[1] ?? ''}`,
-          `${CARD.name}, and I am ${CARD.species}.`,
+          `I am ${card.name}. ${card.bio[0] ?? ''}`,
+          `${card.name}. ${card.bio[1] ?? ''}`,
+          `${card.name}, and I am ${card.species}.`,
         ],
         seed,
       ),
@@ -170,24 +171,24 @@ const QUESTIONS: readonly Question[] = [
 ];
 
 /** An answer when she is asked about herself, or null when she was not. */
-export function answerAbout(text: string, situation: Situation): string | null {
+export function answerAbout(text: string, situation: Situation, card: Card = CARD): string | null {
   for (const question of QUESTIONS) {
-    if (question.test.test(text)) return question.reply(situation, text);
+    if (question.test.test(text)) return question.reply(situation, text, card);
   }
   return null;
 }
 
 /** What she says when she takes an order. Two sentences at most. */
-export function acknowledge(kind: string, seed: string): string {
+export function acknowledge(kind: string, seed: string, card: Card = CARD): string {
   const lines: Record<string, string[]> = {
     goto: ['On my way.', 'Going there now.', 'Right, over I go.'],
-    mine: ['I will fetch that.', `${CARD.catchphrases[1] ?? 'Let me look.'}`, 'Digging in.'],
+    mine: ['I will fetch that.', `${card.catchphrases[1] ?? 'Let me look.'}`, 'Digging in.'],
     place: ['Putting it down.', 'There we go.', 'Setting it in place.'],
     follow: ['Right behind you.', 'Lead on.', 'I am following.'],
     wander: ['I will go and have a look around.', 'Off exploring, then.'],
     stop: ['Stopping.', 'Standing still.'],
     build: ['Right, let me see what I have.', 'A little building. Stand back.', 'I can do that.'],
-    sculpt: [CARD.catchphrases[0] ?? 'Watch this.', 'Reshaping it now.', 'Stand back a little.'],
+    sculpt: [card.catchphrases[0] ?? 'Watch this.', 'Reshaping it now.', 'Stand back a little.'],
     paint: ['Changing the colour.', 'A fresh coat coming up.'],
     plant: ['Planting now.', 'Let us grow something.'],
     scatter: ['Scattering them about.', 'Sprinkling a few around.'],
@@ -198,7 +199,7 @@ export function acknowledge(kind: string, seed: string): string {
 }
 
 /** A remark when nothing has happened for a while. */
-export function idleRemark(situation: Situation, seed: string): string {
+export function idleRemark(situation: Situation, seed: string, card: Card = CARD): string {
   return pick(
     [
       'I am just poking about.',
@@ -206,9 +207,29 @@ export function idleRemark(situation: Situation, seed: string): string {
       'Ask me to do something and I will.',
       'I was wondering what is under all this.',
       'There is a hole over there I have been trying not to think about.',
+      card.catchphrases[1] ?? 'Hm.',
     ],
     seed,
   );
+}
+
+/**
+ * Two kits with nothing to do, overheard (spec: ambient chatter, two lines
+ * at most). The first speaks to the second and the second answers.
+ */
+export function exchange(a: Card, b: Card, situation: Situation, seed: string): [string, string] {
+  const pairs: [string, string][] = [
+    [
+      `${b.name}, what do you make of ${timeOfDay(situation.dayPhase)} today?`,
+      b.catchphrases[1] ?? 'Mm.',
+    ],
+    ['I keep thinking there is something under this hill.', 'There is. It is more hill.'],
+    [`${b.name}. You are in my spot.`, 'I was here first, and the light is better here.'],
+    ['Do you ever wonder who left the gems about?', 'Someone with more gems than sense.'],
+    [a.catchphrases[0] ?? 'Hm.', `You say that every time, ${a.name}.`],
+    [`Have you ever been up there, ${b.name}?`, 'Not on purpose.'],
+  ];
+  return pick(pairs, seed);
 }
 
 /** What she says when she cannot read a command at all. */

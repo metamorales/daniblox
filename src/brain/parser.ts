@@ -530,31 +530,36 @@ function radiusFrom(tokens: string[], fallback: number): number {
  * Read a whole command, which may address a kit by name and may chain up to
  * three phrases with "then".
  */
-export function parseCommand(input: string, context: ParseContext): ParseResult {
-  const text = input.trim();
-  let addressed: string | null = null;
-  let body = text;
-
-  // A leading token is a name only when a comma follows it, or when it matches
-  // a kit and is not itself a command word. Without that rule a kit called
-  // "Dot" would swallow the verb in "dot the hill with gems".
+/**
+ * The kit a command is addressed to, if any. A leading token is a name only
+ * when a comma follows it, or when it matches a kit and is not itself a
+ * command word. Without that rule a kit called "Dot" would swallow the verb
+ * in "dot the hill with gems". Used by the parser and by the game, which
+ * needs the same answer before a model ever sees the text.
+ */
+export function addressedKit(
+  text: string,
+  names: readonly string[],
+): { readonly name: string; readonly body: string } | null {
   const comma = /^([\p{L}][\p{L}'-]*)\s*,\s*(.+)$/u.exec(text);
-  const names = context.kitNames ?? [];
   if (comma?.[1] && comma[2]) {
     const candidate = comma[1].toLowerCase();
-    if (names.some((n) => n.toLowerCase() === candidate)) {
-      addressed = comma[1];
-      body = comma[2];
-    }
-  } else {
-    const first = normalise(text).split(' ')[0] ?? '';
-    // Without a comma, a leading word is a name only if it is not also a verb
-    // we understand. A kit called "Scatter" must not swallow "scatter gems".
-    if (names.some((n) => n.toLowerCase() === first) && !COMMAND_WORDS.has(first)) {
-      addressed = first;
-      body = text.slice(first.length).trim();
-    }
+    const match = names.find((n) => n.toLowerCase() === candidate);
+    return match ? { name: match, body: comma[2] } : null;
   }
+  const first = normalise(text).split(' ')[0] ?? '';
+  const match = names.find((n) => n.toLowerCase() === first);
+  if (match && !COMMAND_WORDS.has(first)) {
+    return { name: match, body: text.trim().slice(first.length).trim() };
+  }
+  return null;
+}
+
+export function parseCommand(input: string, context: ParseContext): ParseResult {
+  const text = input.trim();
+  const hit = addressedKit(text, context.kitNames ?? []);
+  const addressed = hit?.name ?? null;
+  const body = hit?.body ?? text;
 
   const phrases = body
     .split(/\bthen\b|;/i)

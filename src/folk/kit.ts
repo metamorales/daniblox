@@ -27,6 +27,10 @@ export interface Vec3 {
 }
 
 export interface KitAppearance {
+  /** Where the patches go. Tuxedo is Luciana's; calico splits them by side. */
+  readonly pattern?: 'tuxedo' | 'calico';
+  /** A second patch colour, for a calico's cream. */
+  readonly accent?: string;
   /** Main coat colour. */
   readonly coat: string;
   /** Patches: ears, tail, saddle, eye patch. */

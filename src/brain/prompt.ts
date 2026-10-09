@@ -11,6 +11,7 @@
  * player types, the actions that come back still have to pass the schema.
  */
 
+import type { Card } from '../chat/cards';
 import { CARD, timeOfDay } from '../chat/dialogue';
 import { blockById } from '../world/blocks';
 import type { ChatTurn } from './brain';
@@ -52,13 +53,13 @@ function blockWords(): string {
   return names.join(' ');
 }
 
-export function buildSystemPrompt(situation: PromptSituation): string {
-  const quirk = CARD.quirks[0] ?? '';
+export function buildSystemPrompt(situation: PromptSituation, card: Card = CARD): string {
+  const quirk = card.quirks[0] ?? '';
 
   return [
-    `You are ${CARD.name}, ${CARD.species}. ${CARD.bio[0] ?? ''}`,
-    `Mood: ${CARD.mood}. You ${quirk}. You say things like "${CARD.catchphrases[0] ?? ''}".`,
-    `Voice: ${CARD.voice.register}. Never use emoji or call the player boss.`,
+    `You are ${card.name}, ${card.species}. ${card.bio[0] ?? ''}`,
+    `Mood: ${card.mood}. You ${quirk}. You say things like "${card.catchphrases[0] ?? ''}".`,
+    `Voice: ${card.voice.register}. Never use emoji or call the player boss.`,
     '',
     'Reply with JSON only, no prose around it, shaped exactly:',
     `{"say": string, "actions": [...], "mood"?: "cheerful"|"calm"|"curious"|"grumpy"|"sleepy"}`,

@@ -34,7 +34,13 @@ const KitSave = z
   })
   .strict();
 
-const ChatSave = z.object({ who: z.enum(['player', 'kit']), text: z.string().max(600) }).strict();
+const ChatSave = z
+  .object({
+    who: z.enum(['player', 'kit']),
+    text: z.string().max(600),
+    speaker: z.string().max(40).optional(),
+  })
+  .strict();
 
 const SettingsSave = z
   .object({

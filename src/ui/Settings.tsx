@@ -106,11 +106,11 @@ export function Settings() {
           </select>
         </label>
 
-        <h2 class={styles.heading}>Luciana's brain</h2>
+        <h2 class={styles.heading}>Their brain</h2>
 
         <p class={styles.note}>
-          She works with nothing set up. Point her at a model and she stops needing exact wording. A
-          model running on your own machine needs no key and costs nothing.
+          The cats work with nothing set up. Point them at a model and they stop needing exact
+          wording. A model running on your own machine needs no key and costs nothing.
         </p>
 
         <label class={styles.field}>
@@ -192,7 +192,7 @@ export function Settings() {
               setPreference('ambientModel', (event.currentTarget as HTMLInputElement).checked);
             }}
           />
-          Let the model do her idle remarks too
+          Let the model do their idle remarks too
         </label>
 
         {status?.error && <p class={styles.error}>{status.error}</p>}

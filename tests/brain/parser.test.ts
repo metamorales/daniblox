@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   MAX_PHRASES,
+  addressedKit,
   closestCommands,
   parseCommand,
   type ParseContext,
@@ -240,6 +241,19 @@ describe('chaining and naming', () => {
       expect(result.addressed).toBe('Luciana');
       expect(result.actions[0]).toEqual({ type: 'wander' });
     }
+  });
+
+  it('tells the game who a line is for, before any brain sees it', () => {
+    const names = ['Luciana', 'Xochi'];
+    expect(addressedKit('Xochi, follow me', names)).toEqual({ name: 'Xochi', body: 'follow me' });
+    expect(addressedKit('xochi wander', names)).toEqual({ name: 'Xochi', body: 'wander' });
+    expect(addressedKit('luciana, what are you doing?', names)?.name).toBe('Luciana');
+    expect(addressedKit('wander', names)).toBeNull();
+    expect(addressedKit('Scatter, gems here', ['Scatter'])).toEqual({
+      name: 'Scatter',
+      body: 'gems here',
+    });
+    expect(addressedKit('scatter gems here', ['Scatter'])).toBeNull();
   });
 
   it('does not mistake a command word for a name', () => {

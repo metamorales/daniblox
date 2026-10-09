@@ -9,12 +9,90 @@
   color: var(--text);
 }
 
-.card {
+.roster {
   display: flex;
-  align-items: baseline;
-  gap: 8px;
-  padding: 10px 12px;
+  flex-direction: column;
   border-bottom: 3px solid var(--border);
+}
+
+.card {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  align-items: baseline;
+  gap: 2px 8px;
+  min-height: 44px;
+  padding: 8px 12px;
+  border: 0;
+  border-left: 4px solid transparent;
+  background: transparent;
+  color: var(--text);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.card + .card {
+  border-top: 2px solid var(--border);
+}
+
+.cardSelected {
+  border-left-color: var(--accent);
+  background: var(--bg);
+}
+
+.pockets {
+  grid-column: 1 / -1;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 10px;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.pocket {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.swatch {
+  width: 10px;
+  height: 10px;
+  border: 1px solid var(--ink);
+}
+
+.speaker {
+  color: var(--accent);
+  font-weight: 700;
+}
+
+.chooser {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  padding: 0 12px 10px;
+}
+
+.chooserLabel {
+  margin-right: 4px;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.choice {
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  border: 2px solid var(--border);
+  background: var(--swatch);
+  cursor: pointer;
+}
+
+.choiceSelected {
+  border: 3px solid var(--ink);
+  outline: 2px solid var(--accent);
+  outline-offset: -5px;
 }
 
 .name {

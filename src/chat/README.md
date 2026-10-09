@@ -1,2 +1,2 @@
-Personality cards as JSON, the dialogue template grammar, the ambient chatter
-scheduler, and the all-ages content filter applied to every spoken line.
+Personality cards (one JSON file per kit, read through cards.ts), the dialogue
+template grammar seeded by a card, and the idle-remark scheduler.

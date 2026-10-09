@@ -4,12 +4,13 @@
 
 **Play it now: [metamorales.github.io/daniblox](https://metamorales.github.io/daniblox/)**
 
-A cozy voxel sandbox in the browser with one resident: Luciana, a curious and
-slightly mischievous tuxedo cat who does what you type. Ask her to gather
-bark, plant a forest, raise a hill, or make it night, in plain words. Talk to
-her and she talks back. Everything runs in your browser, saves to your
-browser, and needs no account, no server and no key. Plug in a language
-model, local or hosted, and she stops needing exact wording.
+A cozy voxel sandbox in the browser with two residents: Luciana, a curious
+and slightly mischievous tuxedo cat, and Xochi, a calm dilute calico. They do
+what you type. Ask one to gather bark, plant a forest, raise a hill, build a
+cat tower, or make it night, in plain words. Talk to them and they talk back,
+and to each other when you leave them alone. Everything runs in your browser,
+saves to your browser, and needs no account, no server and no key. Plug in a
+language model, local or hosted, and they stop needing exact wording.
 
 ## Quickstart
 
@@ -24,17 +25,19 @@ e2e` the browser tests, and `npm run lint` everything else.
 
 ## Controls
 
-| Do this                      | Desktop                             | Phone                |
-| ---------------------------- | ----------------------------------- | -------------------- |
-| Look around                  | left-drag                           | one finger           |
-| Move the view                | right-drag, Shift-drag, W A S D     | two fingers          |
-| Zoom                         | wheel or two-finger scroll          | pinch                |
-| Re-centre                    | double-click                        |                      |
-| Choose what to do to a block | click it                            | tap or hold it       |
-| Break or place yourself      | Alt-click, Shift-click, or the menu | the menu             |
-| Talk to Luciana              | the box in the panel, or Ctrl/Cmd K | the box in the sheet |
-| Bring the camera to her      | F, or the palette                   | the palette          |
-| Settings                     | the panel                           | raise the sheet      |
+| Do this                      | Desktop                                | Phone                      |
+| ---------------------------- | -------------------------------------- | -------------------------- |
+| Look around                  | left-drag                              | one finger                 |
+| Move the view                | right-drag, Shift-drag, W A S D        | two fingers                |
+| Zoom                         | wheel or two-finger scroll             | pinch                      |
+| Re-centre                    | double-click                           |                            |
+| Choose what to do to a block | click it                               | tap or hold it             |
+| Break or place yourself      | Alt-click, Shift-click, or the menu    | the menu                   |
+| Talk to the cats             | the box in the panel, or Ctrl/Cmd K    | the box in the sheet       |
+| Pick who you are talking to  | click her card, or start with her name | tap her card               |
+| Bring the camera to her      | F, or the palette                      | the palette                |
+| Choose the block you place   | the swatches under the box             | the swatches under the box |
+| Settings                     | the panel                              | raise the sheet            |
 
 "Here" and "me" mean the pale ring on the ground, which is the point the
 camera orbits. "This" means the block under your pointer.
@@ -59,9 +62,20 @@ sixteen. Block names and their everyday synonyms both work: `bark` or `wood`,
 `clover` or `grass`, `pebble` or `stone`, `shell` or `sand`, `tile` or
 `brick`, `gem` or `crystal`. Anything else is conversation.
 
+Things to build, from what she carries. She fetches what she is short of
+first, and says so:
+
+```
+build a cat tower here · build a little house here · build a litter box here
+```
+
+A cat tower is fourteen bark and a gem, a house twenty-three bark, a litter
+box eight bark and a shell. Start a line with a name, "Xochi, follow me", to
+pick who does it; otherwise it goes to whichever card is selected.
+
 ## Brains
 
-Luciana always works with the built-in scripted brain: a parser for the
+The cats always work with the built-in scripted brain: a parser for the
 grammar above and dialogue written in her voice. Point her at a model under
 **Settings** and the model takes over, with every reply checked against a
 closed list of actions before anything happens in the world. A reply that

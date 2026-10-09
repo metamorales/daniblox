@@ -13,20 +13,32 @@ export interface ChatLine {
   readonly id: number;
   readonly who: 'player' | 'kit';
   readonly text: string;
+  /** Which kit said it, when a kit did. */
+  readonly speaker?: string;
 }
 
 export interface KitStatus {
+  readonly id: string;
   readonly name: string;
   /** A short label for what she is doing, or null when she is idle. */
   readonly activity: string | null;
-  readonly carrying: readonly { readonly label: string; readonly count: number }[];
+  readonly carrying: readonly {
+    readonly block: number;
+    readonly label: string;
+    readonly count: number;
+  }[];
 }
 
 /** Spec R8 keeps the last fifty lines. */
 export const MAX_CHAT_LINES = 50;
 
 export const chat = signal<readonly ChatLine[]>([]);
-export const kitStatus = signal<KitStatus | null>(null);
+/** Every kit, in spawn order, with what she is doing and carrying. */
+export const roster = signal<readonly KitStatus[]>([]);
+/** Who an unaddressed command goes to. */
+export const selectedKit = signal('luciana');
+/** The block the player puts down by hand. */
+export const placeBlock = signal(7);
 export const toast = signal<string | null>(null);
 /** Read out by the polite live region, for anyone not watching the canvas. */
 export const announcement = signal('');
@@ -35,11 +47,13 @@ export const thinking = signal(false);
 let nextId = 1;
 let toastTimer: ReturnType<typeof setTimeout> | undefined;
 
-export function addLine(who: ChatLine['who'], text: string): void {
-  const line = { id: nextId++, who, text };
+export function addLine(who: ChatLine['who'], text: string, speaker?: string): void {
+  const line: ChatLine = speaker
+    ? { id: nextId++, who, text, speaker }
+    : { id: nextId++, who, text };
   const next = [...chat.value, line];
   chat.value = next.length > MAX_CHAT_LINES ? next.slice(next.length - MAX_CHAT_LINES) : next;
-  if (who === 'kit') announcement.value = text;
+  if (who === 'kit') announcement.value = speaker ? `${speaker}: ${text}` : text;
 }
 
 export function showToast(text: string, ms = 3200): void {
@@ -59,7 +73,9 @@ export function clearChat(): void {
 }
 
 /** Put saved lines back, in order, with fresh ids. */
-export function restoreChat(lines: readonly { who: ChatLine['who']; text: string }[]): void {
+export function restoreChat(
+  lines: readonly { who: ChatLine['who']; text: string; speaker?: string }[],
+): void {
   chat.value = lines.slice(-MAX_CHAT_LINES).map((line) => ({ id: nextId++, ...line }));
 }
 

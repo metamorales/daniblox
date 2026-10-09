@@ -9,6 +9,7 @@ import { LAYER } from '../world/blocks';
 import { WORLD_X, WORLD_Y, WORLD_Z, World } from '../world/chunks';
 import { generate } from '../world/terrain';
 import { Kit } from '../folk/kit';
+import { CARDS } from '../chat/cards';
 import { KitMesh } from './kitMesh';
 import { loadAtlas } from './atlas';
 import { ChunkMeshes } from './chunkMeshes';
@@ -93,16 +94,40 @@ export async function createWorldView(
   const orbit = new OrbitCamera(canvas, { minX: 0, maxX: WORLD_X, minZ: 0, maxZ: WORLD_Z });
   orbit.setTarget(WORLD_X / 2, WORLD_Y * 0.42, WORLD_Z / 2);
 
-  // Luciana starts on the surface at the middle of the meadow.
+  // The kits start on the surface at the middle of the meadow, a couple of
+  // blocks apart, one per card.
   const spawnX = Math.floor(WORLD_X / 2);
   const spawnZ = Math.floor(WORLD_Z / 2);
-  const luciana = new Kit({
-    id: 'luciana',
-    name: 'Luciana',
-    appearance: { coat: '#ffffff', patch: '#2b2436' },
-    at: { x: spawnX, y: world.surfaceHeight(spawnX, spawnZ) + 1, z: spawnZ },
-  });
-  const kits = [luciana];
+  const SPAWN_OFFSETS: readonly (readonly [number, number])[] = [
+    [0, 0],
+    [2, 0],
+    [-2, 0],
+    [0, 2],
+    [0, -2],
+    [2, 2],
+    [-2, -2],
+    [2, -2],
+  ];
+  const spawnOf = (index: number): { x: number; y: number; z: number } => {
+    const [dx, dz] = SPAWN_OFFSETS[index % SPAWN_OFFSETS.length] ?? [0, 0];
+    const x = spawnX + dx;
+    const z = spawnZ + dz;
+    return { x, y: world.surfaceHeight(x, z) + 1, z };
+  };
+  const kits = CARDS.map(
+    (card, index) =>
+      new Kit({
+        id: card.id,
+        name: card.name,
+        appearance: {
+          coat: card.appearance.coat,
+          patch: card.appearance.patch,
+          accent: card.appearance.accent,
+          pattern: card.appearance.pattern,
+        },
+        at: spawnOf(index),
+      }),
+  );
   const kitMeshes = kits.map((kit) => new KitMesh(kit));
 
   /** Stand each kit on the ground at its column, after the world changed under her. */
@@ -199,10 +224,10 @@ export async function createWorldView(
       generate(world);
       base = world.toBytes();
       chunks.rebuildAll();
-      for (const kit of kits) {
+      kits.forEach((kit, index) => {
         kit.inventory.clear();
-        kit.teleport({ x: spawnX, y: world.surfaceHeight(spawnX, spawnZ) + 1, z: spawnZ });
-      }
+        kit.teleport(spawnOf(index));
+      });
       orbit.setTarget(WORLD_X / 2, WORLD_Y * 0.42, WORLD_Z / 2);
     },
 

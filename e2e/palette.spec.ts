@@ -59,7 +59,7 @@ test.describe('the command palette', () => {
 
     const broken = await solidCount(page);
     await page.keyboard.press('Control+k');
-    await page.keyboard.type('place a tile');
+    await page.keyboard.type('place your block');
     await page.keyboard.press('ArrowDown');
     await page.keyboard.press('Enter');
     await expect.poll(() => solidCount(page)).toBeGreaterThan(broken);

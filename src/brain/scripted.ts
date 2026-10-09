@@ -9,6 +9,7 @@
  * evaluated, and the output still goes through the schema like any other.
  */
 
+import { cardFor } from '../chat/cards';
 import {
   CARD,
   acknowledge,
@@ -60,6 +61,7 @@ export class ScriptedBrain implements Brain {
       dayPhase: world.dayPhase,
     };
 
+    const card = cardFor(request.folk.id);
     const parsed = parseCommand(text, {
       reticle: world.reticle,
       focus: world.focus ?? null,
@@ -68,7 +70,7 @@ export class ScriptedBrain implements Brain {
 
     if (parsed.ok && parsed.actions.length > 0) {
       const first = parsed.actions[0];
-      let say = acknowledge(first?.type ?? 'goto', text);
+      let say = acknowledge(first?.type ?? 'goto', text, card);
       const second = parsed.actions[1];
       if (second) say += ` Then ${describe(second)}.`;
       return this.checked({ say: clip(say), actions: parsed.actions });
@@ -77,7 +79,7 @@ export class ScriptedBrain implements Brain {
     // Not a command, so it is conversation. She can speak about her own
     // situation, which is most of what anyone asks a companion standing
     // beside them.
-    const about = answerAbout(text, situation);
+    const about = answerAbout(text, situation, card);
     if (about) return this.checked({ say: clip(about), actions: [] });
 
     const suggestions = parsed.ok ? [] : parsed.suggestions;
@@ -85,8 +87,8 @@ export class ScriptedBrain implements Brain {
   }
 
   /** A remark when nothing has happened for a while. */
-  idle(situation: Situation, seed: string): string {
-    return idleRemark(situation, seed);
+  idle(situation: Situation, seed: string, kitId?: string): string {
+    return idleRemark(situation, seed, cardFor(kitId));
   }
 
   /**

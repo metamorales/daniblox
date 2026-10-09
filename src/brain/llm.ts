@@ -10,6 +10,7 @@
  * in memory unless they explicitly ask otherwise.
  */
 
+import { cardFor } from '../chat/cards';
 import type { Brain, BrainRequest } from './brain';
 import { buildSystemPrompt, recentTurns, wrapPlayerMessage, type PromptSituation } from './prompt';
 import { RateLimiter } from './rateLimiter';
@@ -145,7 +146,7 @@ export class LlmBrain implements Brain {
     if (!this.limiter.take()) return this.breather(request);
 
     const situation = request.situation ?? fallbackSituation(request);
-    const system = buildSystemPrompt(situation);
+    const system = buildSystemPrompt(situation, cardFor(request.folk.id));
     const turns = recentTurns(request.history);
 
     const first = await this.ask(system, turns, wrapPlayerMessage(request.text));

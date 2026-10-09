@@ -28,9 +28,14 @@ export const PLAYER_ITEMS: readonly PaletteItem[] = [
     kind: 'player',
     value: 'break-here',
   },
-  { label: 'Place a tile here', hint: 'you, at the reticle', kind: 'player', value: 'place-here' },
   {
-    label: 'Focus Luciana',
+    label: 'Place your block here',
+    hint: 'you, at the reticle',
+    kind: 'player',
+    value: 'place-here',
+  },
+  {
+    label: 'Focus the selected cat',
     hint: 'bring the camera to her, also F',
     kind: 'player',
     value: 'focus-kit',
@@ -59,6 +64,7 @@ export const EXAMPLES: readonly string[] = [
   'gather three bark',
   'go here',
   'follow me',
+  'Xochi, follow Luciana',
   'wander',
   'stop',
 ];
@@ -68,7 +74,7 @@ export function paletteItems(query: string): PaletteItem[] {
   const needle = typed.toLowerCase();
   const examples = EXAMPLES.map((text): PaletteItem => ({
     label: text,
-    hint: 'tell Luciana',
+    hint: 'tell the cats',
     kind: 'say',
     value: text,
   }));
@@ -81,7 +87,7 @@ export function paletteItems(query: string): PaletteItem[] {
   const exact = all.find((item) => item.label.toLowerCase() === needle);
   const head: PaletteItem = exact ?? {
     label: typed,
-    hint: 'send to Luciana',
+    hint: 'send to the cats',
     kind: 'say',
     value: typed,
   };

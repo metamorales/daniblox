@@ -311,6 +311,10 @@ export class KitMesh {
   constructor(private readonly kit: Kit) {
     const coat = kit.appearance.coat;
     const patch = kit.appearance.patch;
+    // A calico wears her two colours by side: grey over one ear, half the
+    // crown and the saddle, cream on the other ear and the tail.
+    const calico = kit.appearance.pattern === 'calico';
+    const accent = kit.appearance.accent ?? patch;
 
     // Torso, arms and saddle.
     const torso = bake([
@@ -340,8 +344,8 @@ export class KitMesh {
       {
         geometry: new SphereGeometry(0.272, 18, 14),
         colour: patch,
-        position: [0, 0.1, -0.09],
-        scale: [1.07, 0.82, 0.84],
+        position: [calico ? 0.09 : 0, 0.1, -0.09],
+        scale: [calico ? 0.72 : 1.07, 0.82, 0.84],
       },
       {
         geometry: new SphereGeometry(0.1, 12, 10),
@@ -353,7 +357,7 @@ export class KitMesh {
     for (const side of [-1, 1]) {
       headParts.push({
         geometry: new ConeGeometry(0.105, 0.26, 10),
-        colour: patch,
+        colour: calico && side < 0 ? accent : patch,
         position: [side * 0.165, 0.3, -0.02],
         rotation: [0, 0, side * 0.3],
       });
@@ -385,7 +389,7 @@ export class KitMesh {
     for (let i = 0; i < 6; i++) {
       tailParts.push({
         geometry: new SphereGeometry(radius, 8, 6),
-        colour: patch,
+        colour: calico ? accent : patch,
         position: [Math.sin(i * 0.5) * 0.09, y, z],
       });
       radius *= 0.9;

@@ -17,7 +17,9 @@ import type { Kit } from '../folk/kit';
 import { AIR, blockById, blockByName } from '../world/blocks';
 import { STRUCTURE_LABELS, type StructureKind } from '../world/structures';
 import { AmbientChatter } from '../chat/ambient';
-import { acknowledge, type Situation } from '../chat/dialogue';
+import { cardFor } from '../chat/cards';
+import { acknowledge, exchange, type Situation } from '../chat/dialogue';
+import { addressedKit } from '../brain/parser';
 import type { WorldView } from '../render/scene';
 import {
   addLine,
@@ -28,7 +30,6 @@ import {
   chat,
   clearChat,
   cycleTheme,
-  kitStatus,
   modelSettings,
   onApplyModel,
   onBlockMenuChoice,
@@ -42,8 +43,11 @@ import {
   onboarding,
   paletteOpen,
   perfView,
+  placeBlock,
   preferences,
   restoreChat,
+  roster,
+  selectedKit,
   settingsOpen,
   showToast,
   thinking,
@@ -177,9 +181,8 @@ export function createGame(view: WorldView, loop: FixedLoop, session: Session): 
     report: (kit, note, detail) => {
       const line = voice(note, detail);
       if (!line) return;
-      addLine('kit', line);
+      addLine('kit', line, kit.name);
       remember('kit', line);
-      void kit;
     },
   };
 
@@ -190,12 +193,21 @@ export function createGame(view: WorldView, loop: FixedLoop, session: Session): 
     if (history.length > HISTORY_LENGTH) history.splice(0, history.length - HISTORY_LENGTH);
   }
 
-  function refreshStatus(kit: Kit): void {
-    const carrying = [...kit.inventory.entries()]
-      .map(([id, count]) => ({ label: blockById(id)?.label ?? 'something', count }))
-      .sort((a, b) => b.count - a.count)
-      .slice(0, 3);
-    kitStatus.value = { name: kit.name, activity: kit.activity, carrying };
+  function refreshStatus(): void {
+    roster.value = view.kits.map((kit) => ({
+      id: kit.id,
+      name: kit.name,
+      activity: kit.activity,
+      carrying: [...kit.inventory.entries()]
+        .filter(([, count]) => count > 0)
+        .map(([id, count]) => ({ block: id, label: blockById(id)?.label ?? 'something', count }))
+        .sort((a, b) => b.count - a.count),
+    }));
+  }
+
+  /** The kit an unaddressed command goes to. */
+  function selected(): Kit | undefined {
+    return view.kits.find((kit) => kit.id === selectedKit.value) ?? view.kits[0];
   }
 
   function situationOf(kit: Kit): Situation {
@@ -307,7 +319,7 @@ export function createGame(view: WorldView, loop: FixedLoop, session: Session): 
   if (session.voxels) view.loadWorld(session.voxels);
   if (session.edits) view.loadWorld(applyEdits(view.baseWorld(), session.edits));
   if (session.save) applySave(session.save);
-  for (const kit of view.kits) refreshStatus(kit);
+  refreshStatus();
 
   // A key kept for this tab survives a reload; a local model needs none and
   // comes back by itself when it was in use.
@@ -427,7 +439,7 @@ export function createGame(view: WorldView, loop: FixedLoop, session: Session): 
     revisionAtLoad = view.world.revision;
     lastPrint = '';
     window.history.replaceState(null, '', window.location.pathname + window.location.search);
-    for (const kit of view.kits) refreshStatus(kit);
+    refreshStatus();
     showToast('A new meadow. Your settings are as they were.');
   };
 
@@ -459,7 +471,7 @@ export function createGame(view: WorldView, loop: FixedLoop, session: Session): 
     output: { say: string; actions: readonly import('../brain/schema').Action[] },
     kit: Kit,
   ): void {
-    addLine('kit', output.say);
+    addLine('kit', output.say, kit.name);
     remember('kit', output.say);
 
     if (output.actions.length > 0) {
@@ -474,8 +486,14 @@ export function createGame(view: WorldView, loop: FixedLoop, session: Session): 
   function send(text: string): void {
     const trimmed = text.trim();
     if (!trimmed) return;
-    const kit = view.kits[0];
+    // A name at the start picks the kit and selects her for what follows.
+    const hit = addressedKit(
+      trimmed,
+      view.kits.map((k) => k.name),
+    );
+    const kit = hit ? (view.kits.find((k) => k.name === hit.name) ?? selected()) : selected();
     if (!kit) return;
+    if (hit) selectedKit.value = kit.id;
 
     addLine('player', trimmed);
     remember('player', trimmed);
@@ -527,7 +545,7 @@ export function createGame(view: WorldView, loop: FixedLoop, session: Session): 
   }
 
   onCommand.value = send;
-  for (const kit of view.kits) refreshStatus(kit);
+  refreshStatus();
 
   /** An order that came from a click rather than from typing. */
   function order(kit: Kit, kind: string, actions: Action[], seed: string): void {
@@ -557,10 +575,10 @@ export function createGame(view: WorldView, loop: FixedLoop, session: Session): 
     if (!view.editBlock(x, y, z, id)) showToast('Nothing changed there.');
   }
 
-  const tileId = (): number => blockByName('tile')?.id ?? 7;
+  const tileId = (): number => placeBlock.value || (blockByName('tile')?.id ?? 7);
 
   onBlockMenuChoice.value = (choice, pick) => {
-    const kit = view.kits[0];
+    const kit = selected();
     if (!kit) return;
     const { cell, normal } = pick;
     const facing = { x: cell.x + normal.x, y: cell.y + normal.y, z: cell.z + normal.z };
@@ -585,7 +603,7 @@ export function createGame(view: WorldView, loop: FixedLoop, session: Session): 
   };
 
   onPlayerAction.value = (action) => {
-    const kit = view.kits[0];
+    const kit = selected();
     const reticle = view.orbit.targetCell();
     const ground = view.world.surfaceHeight(reticle.x, reticle.z);
     switch (action) {
@@ -648,8 +666,24 @@ export function createGame(view: WorldView, loop: FixedLoop, session: Session): 
   let sinceReadout = 0;
   let nodesSeen = 0;
 
-  // Idle remarks: scripted unless the player lets the model do them.
+  // Idle remarks: scripted unless the player lets the model do them. With two
+  // kits idle it is a two-line exchange, the answer a moment after the line.
   const ambient = new AmbientChatter();
+  let pendingReply: { kit: Kit; text: string; at: number } | null = null;
+
+  function overhear(a: Kit, b: Kit): void {
+    ambient.noteSpeech(loop.ticks * TICK_MS);
+    const [first, second] = exchange(
+      cardFor(a.id),
+      cardFor(b.id),
+      situationOf(a),
+      String(loop.ticks),
+    );
+    addLine('kit', first, a.name);
+    remember('kit', first);
+    pendingReply = { kit: b, text: second, at: loop.ticks + 30 };
+  }
+
   function muse(kit: Kit): void {
     const now = loop.ticks * TICK_MS;
     ambient.noteSpeech(now);
@@ -675,8 +709,8 @@ export function createGame(view: WorldView, loop: FixedLoop, session: Session): 
         .catch(() => undefined);
       return;
     }
-    const line = scripted.idle(situationOf(kit), String(loop.ticks));
-    addLine('kit', line);
+    const line = scripted.idle(situationOf(kit), String(loop.ticks), kit.id);
+    addLine('kit', line, kit.name);
     remember('kit', line);
   }
 
@@ -696,12 +730,23 @@ export function createGame(view: WorldView, loop: FixedLoop, session: Session): 
       // The panel does not need refreshing twenty times a second.
       if (++sinceStatus >= 5) {
         sinceStatus = 0;
-        const kit = view.kits[0];
-        if (kit) refreshStatus(kit);
+        refreshStatus();
       }
-      const first = view.kits[0];
-      const idle = first ? (queues.get(first.id)?.idle ?? true) && first.state === 'idle' : false;
-      if (first && ambient.tick(idle, loop.ticks * TICK_MS)) muse(first);
+      if (pendingReply && loop.ticks >= pendingReply.at) {
+        addLine('kit', pendingReply.text, pendingReply.kit.name);
+        remember('kit', pendingReply.text);
+        pendingReply = null;
+      }
+      const idleKits = view.kits.filter(
+        (kit) => (queues.get(kit.id)?.idle ?? true) && kit.state === 'idle',
+      );
+      const [one, two] = idleKits;
+      if (one && ambient.tick(true, loop.ticks * TICK_MS)) {
+        if (two) overhear(one, two);
+        else muse(one);
+      } else if (!one) {
+        ambient.tick(false, loop.ticks * TICK_MS);
+      }
       // A guest world becomes the player's own the moment they change it, and
       // the link comes off the address bar so a reload opens the save.
       if (sharedUntilEdit && view.world.revision !== revisionAtLoad) {

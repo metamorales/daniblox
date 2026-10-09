@@ -3,7 +3,7 @@ import type { Page } from '@playwright/test';
 
 test.use({ freshVisitor: true });
 
-const dialog = (page: Page) => page.getByRole('dialog', { name: /Meet Luciana|order|hello/ });
+const dialog = (page: Page) => page.getByRole('dialog', { name: /Meet the cats|order|hello/ });
 
 const words = async (page: Page): Promise<number> => {
   const text = (await dialog(page).textContent()) ?? '';

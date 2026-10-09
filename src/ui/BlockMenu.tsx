@@ -1,7 +1,14 @@
 import { useLayoutEffect, useRef } from 'preact/hooks';
 import { blockById } from '../world/blocks';
 import styles from './BlockMenu.module.css';
-import { blockMenu, onBlockMenuChoice, type MenuChoice } from './state';
+import {
+  blockMenu,
+  onBlockMenuChoice,
+  placeBlock,
+  roster,
+  selectedKit,
+  type MenuChoice,
+} from './state';
 
 /**
  * Click-to-direct (spec R5). A click or a long press on a block opens this:
@@ -9,13 +16,18 @@ import { blockMenu, onBlockMenuChoice, type MenuChoice } from './state';
  * themselves. It is a real menu, so the arrow keys walk it and Escape closes.
  */
 
-const ITEMS: readonly { readonly choice: MenuChoice; readonly label: string }[] = [
-  { choice: 'go', label: 'Go here' },
-  { choice: 'mine', label: 'Mine this' },
-  { choice: 'place', label: 'Place a tile here' },
-  { choice: 'break-you', label: 'Break it yourself' },
-  { choice: 'place-you', label: 'Put a tile here yourself' },
-];
+function items(
+  kitName: string,
+  blockLabel: string,
+): readonly { readonly choice: MenuChoice; readonly label: string }[] {
+  return [
+    { choice: 'go', label: `${kitName}: go here` },
+    { choice: 'mine', label: `${kitName}: mine this` },
+    { choice: 'place', label: `${kitName}: place ${blockLabel} here` },
+    { choice: 'break-you', label: 'Break it yourself' },
+    { choice: 'place-you', label: `Put ${blockLabel} here yourself` },
+  ];
+}
 
 const WIDTH = 240;
 const HEIGHT = 300;
@@ -48,6 +60,11 @@ export function BlockMenu() {
 
   const { cell } = pick;
   const name = blockById(pick.block)?.label ?? 'block';
+  const kitName =
+    roster.value.find((kit) => kit.id === selectedKit.value)?.name ??
+    roster.value[0]?.name ??
+    'Luciana';
+  const chosen = blockById(placeBlock.value)?.label ?? 'a block';
   const left = Math.max(8, Math.min(pick.screen.x, window.innerWidth - WIDTH - 8));
   const top = Math.max(8, Math.min(pick.screen.y, window.innerHeight - HEIGHT - 8));
 
@@ -83,7 +100,7 @@ export function BlockMenu() {
           class={styles.where}
         >{`${String(cell.x)}, ${String(cell.y)}, ${String(cell.z)}`}</span>
       </p>
-      {ITEMS.map((item, i) => (
+      {items(kitName, chosen).map((item, i) => (
         <button
           key={item.choice}
           type="button"

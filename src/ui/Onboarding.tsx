@@ -19,19 +19,19 @@ interface Step {
 
 export const STEPS: readonly Step[] = [
   {
-    title: 'Meet Luciana',
-    body: 'The cat in the meadow is Luciana. Drag to look around and scroll to zoom. The pale ring on the ground is what "here" means.',
+    title: 'Meet the cats',
+    body: 'Two cats live in the meadow: Luciana and Xochi. Drag to look around and scroll to zoom. The pale ring on the ground is what "here" means.',
     action: 'Next',
   },
   {
-    title: 'Give her an order',
-    body: 'She does what you type, in plain words. Try this one: she will raise a hill under the ring.',
+    title: 'Give an order',
+    body: 'They do what you type, in plain words. Start a line with a name to pick one. Try this: Luciana will raise a hill under the ring.',
     action: 'Raise a hill here',
     command: 'raise a hill here',
   },
   {
     title: 'Say hello',
-    body: 'She talks too. Ask what she is doing or carrying, or just say hi. The box on the right is yours from here.',
+    body: 'They talk too. Ask either what she is doing or carrying, or just say hi. The box on the right is yours from here.',
     action: 'Say hello',
     command: 'hello',
   },

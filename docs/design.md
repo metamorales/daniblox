@@ -106,6 +106,15 @@ How it differs: a chibi upright cat with a large expressive face shares
 nothing with a boxy quadruped or a blocky humanoid, and her coat uses only
 the palette's own white and ink.
 
+## Xochi
+
+The second kit, a dilute calico: the same body as Luciana with the patches
+placed by side. Soft grey (`#a3a8bc`) over one ear, half the crown and the
+saddle; cream (`#f0c9a3`) on the other ear and the tail; white everywhere
+else. Both colours are muted so neither competes with the gem, and the
+split reads as calico from across the meadow. Her card gives her a calm,
+unhurried voice to Luciana's dry one.
+
 ## Interface
 
 A calm sidebar on the right: Luciana's card, the chat thread, one command

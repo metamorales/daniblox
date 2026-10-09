@@ -320,3 +320,14 @@ Why: the owner asked her to hop off a hill and she said she could not get there.
 What: `build` puts up a cat tower (fourteen bark, one gem), a little house (twenty-three bark) or a litter box (eight bark, one shell) at the ring, one block every two ticks, bottom up, from her inventory. Before starting she compares the bill with what she carries and puts gather jobs for the difference ahead of the build; if those come back short, she says what she could not find and the build is dropped.
 Why: the owner asked for structures and for inventory to matter. Building for free would make the pockets decoration; making her fetch each log by hand would make a house a chore. Fetching only the shortfall keeps both honest, and bark, shell and gem are all things that stand on the surface.
 Rejected: pebble walls, which are buried and she cannot reach; a bar over the site, which the action icon's bar already covers.
+
+## M9-3 — Two kits, one selected, names win (2026-10-09)
+
+What: Xochi joins Luciana. Both sit in the roster; clicking a card or using the arrow keys over it picks who an unaddressed command goes to, and a line that starts with a name goes to that kit and selects her, on either brain. Chat lines carry the speaker's name. When both are idle they have the spec's two-line exchange, the answer a second and a half after the line, at most once every thirty to sixty seconds. Each cat has her own card, voice and prompt; the renderer reads her colours and pattern from the card.
+Why: the owner asked for a second friend. Selection by card with names winning is the spec's own rule (R1: no name means the selected kit) and needs no new grammar. The kit's own id goes into the save, so an old save with one cat loads and Xochi simply spawns fresh.
+Rejected: a kit chosen by clicking her in the world, which the spec lists; the card is reachable by keyboard and does not fight the block menu for the click.
+
+## M9-4 — Pockets on show, and a block of your own (2026-10-09)
+
+What: each roster card lists the kit's inventory with a swatch and a count. A row of eight swatches under the box chooses the block the player places by hand, from the click menu and the palette; it starts on the painted tile.
+Why: the owner asked for inventory to be visible and usable. Her pockets already drove placing and now drive building; showing them makes gathering worth watching. Placing by hand stays free, since that is the player's creative tool, not hers.
