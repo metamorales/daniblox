@@ -113,7 +113,13 @@ test.describe('with a model behind her', () => {
 
       const reply = await say(page, 'wander');
       expect(reply[0]?.length ?? 0).toBeGreaterThan(0);
-      await expect(page.locator('[class*=error]')).toContainText(/could not reach/i);
+      // Served over HTTPS, as the deployed site is, the game cannot tell a
+      // refused connection from the browser refusing to call localhost at
+      // all, and names the latter because that is the one a player will hit.
+      const secure = new URL(page.url()).protocol === 'https:';
+      await expect(page.locator('[class*=error]')).toContainText(
+        secure ? /will not let a page served over https/i : /could not reach/i,
+      );
       expect(await page.textContent('summary span')).toBe('scripted');
     });
 
