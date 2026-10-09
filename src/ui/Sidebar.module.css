@@ -39,6 +39,15 @@
   overflow-y: auto;
   min-height: 7rem;
   max-height: 40vh;
+}
+
+/* Peeking sheet on a phone: keep the box in reach, show the last line or two. */
+[data-sheet='peek'] .thread {
+  min-height: 3rem;
+  max-height: 12vh;
+}
+
+.threadRules {
   margin: 0;
   padding: 10px 12px;
   list-style: none;

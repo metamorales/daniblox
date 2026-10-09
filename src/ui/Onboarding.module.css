@@ -1,0 +1,78 @@
+/* The layer lets pointer events through to the world; only the card catches them. */
+.layer {
+  position: fixed;
+  inset: 0;
+  z-index: 18;
+  display: grid;
+  place-items: end center;
+  padding: 16px;
+  pointer-events: none;
+}
+
+.card {
+  pointer-events: auto;
+  width: min(26rem, 100%);
+  margin-bottom: 8vh;
+  padding: 16px;
+  border: 3px solid var(--ink);
+  background: var(--surface);
+  color: var(--text);
+  box-shadow: 6px 6px 0 var(--ink);
+}
+
+.count {
+  margin: 0 0 6px;
+  color: var(--muted);
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+}
+
+.title {
+  margin: 0 0 10px;
+  font-family: var(--font-display);
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+.body {
+  margin: 0 0 14px;
+  font-size: 16px;
+  line-height: 1.5;
+}
+
+.row {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.row > button {
+  min-height: 44px;
+  padding: 8px 14px;
+  border: 2px solid var(--ink);
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.primary {
+  background: var(--accent);
+  color: var(--on-accent);
+}
+
+.skip {
+  background: var(--bg);
+  color: var(--text);
+  border-color: var(--border) !important;
+}
+
+@media (max-width: 720px) {
+  .layer {
+    place-items: start center;
+  }
+
+  .card {
+    margin-top: 72px;
+    margin-bottom: 0;
+  }
+}

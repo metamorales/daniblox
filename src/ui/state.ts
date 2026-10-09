@@ -156,6 +156,14 @@ export const perfView = signal<PerfView | null>(null);
 /** Show the three-step welcome again, from the settings panel. */
 export const onReplayOnboarding = signal<() => void>(() => undefined);
 
+/** Which welcome step is up: 1 to 3, or 0 when it is closed. */
+export const onboarding = signal(0);
+/** Finished or skipped; the app remembers so it does not show again. */
+export const onOnboardingDone = signal<() => void>(() => undefined);
+
+/** On a phone the panel is a sheet along the bottom; this is whether it is up. */
+export const sheetOpen = signal(false);
+
 const THEME_ORDER: readonly ThemeChoice[] = ['system', 'light', 'dark'];
 
 export function cycleTheme(): ThemeChoice {

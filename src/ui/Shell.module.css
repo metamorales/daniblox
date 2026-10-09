@@ -45,10 +45,20 @@
   grid-row: 1 / span 3;
   display: flex;
   flex-direction: column;
-  gap: 10px;
-  align-items: flex-end;
   justify-content: flex-start;
   overflow-y: auto;
+}
+
+.panelBody {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  align-items: flex-end;
+}
+
+/* The sheet handle exists only on phones. */
+.handle {
+  display: none;
 }
 
 .toast {
@@ -65,8 +75,8 @@
   font-size: 15px;
 }
 
-/* On a phone the panel becomes a sheet along the bottom. M6 makes it a real
-   bottom sheet with a drag handle. */
+/* On a phone the panel is a sheet along the bottom: a handle, then the panel
+   body, which peeks at first and rises to most of the screen when asked. */
 @media (max-width: 720px) {
   .overlay {
     grid-template-columns: 1fr;
@@ -74,12 +84,59 @@
   }
 
   .panel {
-    grid-column: 1;
-    grid-row: 3;
-    justify-content: stretch;
+    pointer-events: auto;
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    grid-column: auto;
+    grid-row: auto;
+    max-height: 46vh;
+    border-top: 3px solid var(--ink);
+    background: var(--surface);
+    transition: max-height 0.2s ease-out;
   }
 
-  .panel > * {
+  .panelOpen {
+    max-height: 90vh;
+  }
+
+  .handle {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    min-height: 44px;
+    padding: 6px 12px;
+    border: 0;
+    border-bottom: 3px solid var(--border);
+    background: var(--surface);
+    color: var(--muted);
+    font: inherit;
+    font-size: 13px;
+    cursor: pointer;
+  }
+
+  .handleBar {
+    width: 40px;
+    height: 6px;
+    background: var(--block-gem);
+    border: 2px solid var(--ink);
+  }
+
+  .panelBody {
+    overflow-y: auto;
+    align-items: stretch;
+  }
+
+  .panelBody > * {
     width: 100%;
+    border-left: 0;
+    border-right: 0;
+  }
+
+  .toast {
+    grid-row: 2;
+    align-self: start;
   }
 }

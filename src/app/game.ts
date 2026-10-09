@@ -30,7 +30,10 @@ import {
   onBlockMenuChoice,
   onCommand,
   onForgetKey,
+  onOnboardingDone,
   onPlayerAction,
+  onReplayOnboarding,
+  onboarding,
   paletteOpen,
   perfView,
   preferences,
@@ -38,6 +41,7 @@ import {
   showToast,
   thinking,
 } from '../ui/state';
+import { isFirstRun, markWelcomeSeen } from './firstRun';
 import { forgetKey, getKey, restoreKey, setKey } from './keyStore';
 import { blockById as lookupBlock } from '../world/blocks';
 import type { PromptSituation } from '../brain/prompt';
@@ -451,6 +455,14 @@ export function createGame(view: WorldView, loop: FixedLoop): Game {
   const frameTimes: number[] = [];
   let sinceReadout = 0;
   let nodesSeen = 0;
+
+  // The welcome: first visit only, skippable, and back on request.
+  onOnboardingDone.value = markWelcomeSeen;
+  onReplayOnboarding.value = () => {
+    settingsOpen.value = false;
+    onboarding.value = 1;
+  };
+  if (isFirstRun()) onboarding.value = 1;
 
   let sinceStatus = 0;
 
