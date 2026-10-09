@@ -35,6 +35,8 @@ export interface HoveredBlock {
 export interface InteractionEvents {
   /** Fired after the player changes a block, so the caller can save or announce. */
   onEdit?(change: { x: number; y: number; z: number; from: number; to: number }): void;
+  /** Fired when the player points somewhere and asks for a kit to go there. */
+  onGoThere?(cell: { x: number; y: number; z: number }): void;
 }
 
 const DASH_SPEED = 1.6;
@@ -250,6 +252,13 @@ export class Interaction {
     this.events.onEdit?.({ x, y, z, from: AIR, to: id });
   }
 
+  private goThere(): void {
+    const target = this.hovered;
+    if (!target) return;
+    // Stand on top of whatever was pointed at.
+    this.events.onGoThere?.({ x: target.x, y: target.y + 1, z: target.z });
+  }
+
   private bind(): void {
     const onMove = (event: PointerEvent): void => {
       const rect = this.canvas.getBoundingClientRect();
@@ -267,8 +276,10 @@ export class Interaction {
     const onUp = (event: PointerEvent): void => {
       // A drag was a camera move, not a click on a block.
       if (this.dragged > 3 || event.button !== 0) return;
-      // Shift stacks a block onto the face; a plain click takes one away.
-      if (event.shiftKey) this.place(blockByName('tile')?.id ?? 7);
+      // Alt sends Luciana to the spot, shift stacks a block onto the face,
+      // and a plain click takes one away. M3 replaces this with a menu.
+      if (event.altKey) this.goThere();
+      else if (event.shiftKey) this.place(blockByName('tile')?.id ?? 7);
       else this.break();
     };
 

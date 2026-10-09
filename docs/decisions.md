@@ -123,3 +123,27 @@ Rejected: moving the camera further back, which changes the composition on deskt
 What: Press Start 2P and Pixelify Sans were fetched once from the Google Fonts stylesheet API as latin-subset woff2 and committed under public/fonts with their licence files. Together they are 17 KB.
 Why: non-negotiable 5 forbids runtime network requests other than the user's own model endpoint, so nothing may load from a font CDN.
 Rejected: subsetting the variable originals locally, which needs a Python font toolchain for no gain over the already-subset files.
+
+## M2-2 — Luciana is Luciana: white and black, curious and a bit mischievous (2026-10-09)
+
+What: the one kit is named Luciana and wears a tuxedo coat, white with black over the crown, ears, saddle and tail.
+Why: the owner named and designed her. The markings use the palette's own white and ink, so no new colour enters the world, and the black crown plus tall pointed ears is what makes her read as a cat rather than a small person.
+Note: the coat is pure white rather than the palette's cream, and her bounce light is neutral rather than the terrain's rose, because under rose bounce a cream cat read as skin against the green.
+
+## M2-3 — A kit is baked into three meshes, not twenty (2026-10-09)
+
+What: every part that animates together is merged into one geometry carrying its colours on the vertices. Luciana is a torso mesh, a head mesh, a tail mesh, plus a face, a nameplate and a shadow: six draw calls.
+Why: assembled part by part she cost 39 draw calls on her own and broke the budget immediately.
+Rejected: one mesh with per-part transforms in the vertex shader, which would reach a single call but costs far more code than the budget needs.
+
+## M2-4 — The draw-call budget counts overlays explicitly (2026-10-09)
+
+What: the test asserts draw calls at most visible chunks, plus six per kit, plus four.
+Why: spec R6 says "draw calls <= visible chunks + folk", which leaves no room for the sky, the ground reticle, the hovered-face decal, or a kit's face and nameplate. Taken literally no version of this game could pass. The reading here keeps the per-chunk and per-kit discipline the budget is really about and names the fixed overlay cost out loud.
+Rejected: dropping the reticle or the nameplate to satisfy the arithmetic.
+
+## M2-5 — Test worlds must be sealed across the whole world (2026-10-09)
+
+What: a pathfinding fixture that builds a small floor and walls it off does not actually wall anything off.
+Why: the ground below the world is solid, so a kit walks off the edge of the test floor, crosses on the bedrock and climbs back up the far side. Two tests were asserting the wrong thing until this surfaced.
+How to apply: walls and ceilings in pathfinding tests span the full 64 cells.

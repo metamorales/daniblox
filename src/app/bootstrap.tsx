@@ -52,10 +52,10 @@ export async function start(): Promise<void> {
     // The world clock starts mid-morning, so the first frame is daylight.
     startPhase: 0.22,
     tick: () => {
-      // Kits and their action queues arrive in M2 and M3.
+      view.tick();
     },
-    render: (_alpha, frameMs) => {
-      view.render(loop.dayPhase, frameMs);
+    render: (alpha, frameMs) => {
+      view.render(loop.dayPhase, frameMs, alpha);
     },
   });
   window.__loop = loop;

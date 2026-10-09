@@ -8,6 +8,8 @@ import { Group, Scene, WebGLRenderer } from 'three';
 import { LAYER } from '../world/blocks';
 import { WORLD_X, WORLD_Y, WORLD_Z, World } from '../world/chunks';
 import { generate } from '../world/terrain';
+import { Kit } from '../folk/kit';
+import { KitMesh } from './kitMesh';
 import { loadAtlas } from './atlas';
 import { ChunkMeshes } from './chunkMeshes';
 import { Interaction } from './interaction';
@@ -29,9 +31,15 @@ export interface WorldView {
   readonly world: World;
   readonly orbit: OrbitCamera;
   readonly perf: PerfSnapshot;
+  /** Luciana. A roster of one today; the shape allows more later. */
+  readonly kits: readonly Kit[];
+  /** One simulation step, driven by the fixed-step loop. */
+  tick(): void;
+  /** Send a kit to a cell. The proper click-to-direct menu lands in M3. */
+  sendTo(kitId: string, cell: { x: number; y: number; z: number }): void;
   /** Frames drawn since start. The e2e suite reads this to prove the loop runs. */
   frames: number;
-  render(dayPhase: number, frameMs: number): void;
+  render(dayPhase: number, frameMs: number, alpha?: number): void;
   resize(): void;
   dispose(): void;
 }
@@ -60,11 +68,28 @@ export async function createWorldView(
   const orbit = new OrbitCamera(canvas, { minX: 0, maxX: WORLD_X, minZ: 0, maxZ: WORLD_Z });
   orbit.setTarget(WORLD_X / 2, WORLD_Y * 0.42, WORLD_Z / 2);
 
+  // Luciana starts on the surface at the middle of the meadow.
+  const spawnX = Math.floor(WORLD_X / 2);
+  const spawnZ = Math.floor(WORLD_Z / 2);
+  const luciana = new Kit({
+    id: 'luciana',
+    name: 'Luciana',
+    appearance: { coat: '#ffffff', patch: '#2b2436' },
+    at: { x: spawnX, y: world.surfaceHeight(spawnX, spawnZ) + 1, z: spawnZ },
+  });
+  const kits = [luciana];
+  const kitMeshes = kits.map((kit) => new KitMesh(kit));
+  for (const mesh of kitMeshes) scene.add(mesh.group);
+
   const effects = new Group();
   effects.name = 'effects';
   scene.add(effects);
 
-  const interaction = new Interaction(canvas, world, orbit.camera, chunks.group, effects);
+  const interaction = new Interaction(canvas, world, orbit.camera, chunks.group, effects, {
+    onGoThere(cell) {
+      luciana.goTo(world, cell);
+    },
+  });
   scene.add(interaction.reticle);
   scene.add(interaction.decal);
 
@@ -87,17 +112,33 @@ export async function createWorldView(
   resize();
   window.addEventListener('resize', resize);
 
+  const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
+
   const view: WorldView = {
     world,
     orbit,
     perf,
+    kits,
     frames: 0,
 
-    render(dayPhase: number, frameMs: number): void {
+    tick(): void {
+      for (const kit of kits) kit.tick(world);
+    },
+
+    sendTo(kitId, cell): void {
+      kits.find((kit) => kit.id === kitId)?.goTo(world, cell);
+    },
+
+    render(dayPhase: number, frameMs: number, alpha = 1): void {
       const palette = skyAt(dayPhase);
       sky.apply(palette);
       material.setNightTint(palette.tint);
       material.setSkyColours(palette.zenith, palette.horizon);
+      for (const mesh of kitMeshes) {
+        mesh.setNightTint(palette.tint);
+        mesh.setSkyColours(palette.zenith, palette.horizon);
+        mesh.update(frameMs, alpha, orbit.camera.position, reducedMotion.matches);
+      }
 
       orbit.update(frameMs);
       // The sky rides with the camera, so its gradient never clips or moves.
@@ -126,6 +167,7 @@ export async function createWorldView(
 
     dispose(): void {
       window.removeEventListener('resize', resize);
+      for (const mesh of kitMeshes) mesh.dispose();
       interaction.dispose();
       orbit.dispose();
       chunks.dispose();
