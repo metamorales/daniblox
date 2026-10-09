@@ -309,3 +309,8 @@ Why: real-GPU numbers and a readable recording need a real window, which CI does
 
 What: the dependency was installed at M0 as one the spec allows and never used; localStorage covers the save and sessionStorage the key.
 Why: an unused package is weight in the lockfile and a question for every reader.
+
+## M9-1 — A kit may fall any height (2026-10-09)
+
+What: the pathfinder's fall limit goes from three blocks to the height of the world, with a small cost per block dropped so she prefers a gentler way down when one exists. Climbing is still one step at a time.
+Why: the owner asked her to hop off a hill and she said she could not get there. Falling has no cost to her in this game, so the spec's limit (R4, "fall ≤3") only produced refusals. Amends R4 at the owner's request; R9's "falls ≤3" test becomes "falls any height".

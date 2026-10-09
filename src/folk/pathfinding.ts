@@ -5,18 +5,23 @@
  * must not stall a frame. The caller gives it a couple of milliseconds each
  * frame and asks whether it has finished.
  *
- * Movement rules, all from the spec: four-neighbour moves only, step up one,
- * fall at most three, cost one per move and half as much again for a step up.
- * Kits are never obstacles to one another; waiting for a blocked cell belongs
- * to the movement step, not here.
+ * Movement rules: four-neighbour moves only, step up one, cost one per move
+ * and half as much again for a step up. A kit may drop any height, since a
+ * fall costs her nothing in this game; the spec's three-block limit was
+ * lifted at the owner's request (decisions M9-1), and a small cost per block
+ * dropped keeps her on the gentler way down when there is one. Kits are never
+ * obstacles to one another; waiting for a blocked cell belongs to the movement
+ * step, not here.
  */
 
 import { isSolid } from '../world/blocks';
 import { WORLD_X, WORLD_Y, WORLD_Z, World } from '../world/chunks';
 
-export const MAX_FALL = 3;
+export const MAX_FALL = WORLD_Y;
 export const MAX_EXPANDED = 4000;
 export const STEP_UP_COST = 0.5;
+/** Per block dropped beyond the first, so a cliff is taken only when it is the way. */
+export const FALL_COST = 0.1;
 
 export interface Cell {
   readonly x: number;
@@ -226,12 +231,14 @@ export class PathSearch {
       return { cell: { x: nx, y: from.y + 1, z: nz }, cost: 1 + STEP_UP_COST };
     }
 
-    // Down, as far as the fall limit allows, landing on the first floor found.
+    // Down, any height, landing on the first floor found.
     for (let drop = 1; drop <= MAX_FALL; drop++) {
       const y = from.y - drop;
       if (y < 0) break;
       if (isSolid(world.get(nx, y + 1, nz))) break;
-      if (isWalkable(world, nx, y, nz)) return { cell: { x: nx, y, z: nz }, cost: 1 };
+      if (isWalkable(world, nx, y, nz)) {
+        return { cell: { x: nx, y, z: nz }, cost: 1 + (drop - 1) * FALL_COST };
+      }
     }
 
     return null;

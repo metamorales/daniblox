@@ -133,6 +133,17 @@ This is where the world-scale powers get their point: plain English in, a reshap
 
 Stretch, only after the checklist passes and in this order: first-person camera toggle; original sound effects + mute; depot block; emissive accent block; JSON export/import.
 
+### M9 — the owner's changes (after the M8 checklist, 2026-10-09)
+
+Asked for after playing the finished MVP: things the sim should do that the spec did not ask for.
+
+- **Falls.** A kit may drop any height to reach somewhere lower; the spec's three-block limit is lifted at the owner's request (decisions M9-1). Pathing prefers gentler routes by a small cost per block dropped. Test: a path down a six-block cliff is found; the four-block-drop case that used to be refused now passes.
+- **Inventory on show.** Each kit's pockets are listed in her roster card with a swatch and a count. A "you place" chooser picks which block the player's own placing uses, from the click menu and the palette. Test: a browser test gathers bark and sees the count; placing by hand puts the chosen block down.
+- **Structures.** `build` is a new action with three blueprints: a wooden cat tower, a small house, a litter box. A blueprint is a list of cells and blocks relative to the ground at the site, pure and unit-tested. The kit builds from her inventory, one block every two ticks, bottom up, skipping cells that are not air or that someone stands in. Materials she is short of she gathers first, by inserting gather jobs ahead of the build; if the meadow has too few, she says what she could not find and the build is cancelled (decisions M9-2). Parser: "build a cat tower here", "make a house at 20 12 20", "build a litter box here". Tests: blueprint counts and bounds; a build from a full pocket; a build that gathers first; a build that cannot find its materials; the parser cases; a browser test that builds a tower.
+- **Xochi.** A second kit, a dilute calico: white coat, soft grey and cream patches. Her own card and voice. Both kits sit in the roster; clicking a card, or the arrow keys, selects who an unaddressed command goes to; "Xochi, follow me" addresses her by name on either brain. Chat lines carry the speaker's name. When both are idle they have the spec's two-line exchange at most once every thirty seconds (decisions M9-3). Tests: cards are valid and distinct; a named command reaches the right kit; the exchange obeys the gap; the draw-call budget holds with two kits.
+
+Exit: lint, unit and browser tests green; decisions M9-1 to M9-3; design.md gains Xochi; README names both cats and the build commands.
+
 ## 3. Visual direction — "Pocket Meadow" (cute retro pixel)
 
 Chosen by the owner on 2026-10-09, replacing an earlier cut-paper direction. The brief: pixelated retro style, cute and anime-flavoured like a handheld creature game, cat characters with clear readable features, and classic-game pixel lettering. Every colour below was checked locally for WCAG AA in both themes, for block-to-block separation at a glance, and for what happens under ambient-occlusion shading, so no block slides into dirt-brown in shadow.

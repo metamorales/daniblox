@@ -110,7 +110,7 @@ describe('pathfinding', () => {
     expect(findPath(clear, at(2, 1, 2), at(5, 2, 2)).exact).toBe(true);
   });
 
-  it('falls up to three blocks but no further', () => {
+  it('falls any height to reach somewhere lower', () => {
     const makeDrop = (depth: number): World => {
       const world = new World(1);
       for (let x = 0; x < 12; x++) {
@@ -126,8 +126,33 @@ describe('pathfinding', () => {
     const three = makeDrop(3);
     expect(findPath(three, at(5, 4, 5), at(7, 1, 5)).exact).toBe(true);
 
+    // The owner asked her to hop off a hill; the spec's limit of three used
+    // to refuse this (decisions M9-1).
     const five = makeDrop(5);
-    expect(findPath(five, at(5, 6, 5), at(7, 1, 5)).exact).toBe(false);
+    expect(findPath(five, at(5, 6, 5), at(7, 1, 5)).exact).toBe(true);
+
+    const cliff = makeDrop(14);
+    const path = findPath(cliff, at(5, 15, 5), at(7, 1, 5));
+    expect(path.exact).toBe(true);
+    // She walks off the edge rather than being teleported: every step is a
+    // neighbour on the ground or a straight drop.
+    for (let i = 1; i < path.cells.length; i++) {
+      const a = path.cells[i - 1];
+      const b = path.cells[i];
+      if (!a || !b) continue;
+      expect(Math.abs(a.x - b.x) + Math.abs(a.z - b.z)).toBe(1);
+    }
+  });
+
+  it('still refuses to climb more than one block at a time', () => {
+    const world = new World(1);
+    for (let x = 0; x < 12; x++) {
+      for (let z = 0; z < 12; z++) {
+        world.set(x, 0, z, 3);
+        if (x >= 6) world.set(x, 2, z, 3);
+      }
+    }
+    expect(findPath(world, at(2, 1, 5), at(8, 3, 5)).exact).toBe(false);
   });
 
   it('returns the nearest cell it reached when the target is walled in', () => {
