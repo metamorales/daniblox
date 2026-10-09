@@ -65,6 +65,8 @@ export class OrbitCamera {
   private readonly keys = new Set<string>();
   private readonly cleanups: (() => void)[] = [];
   private reducedMotion = false;
+  /** The settings panel can turn easing off regardless of the system. */
+  private forcedReducedMotion = false;
 
   constructor(
     private readonly canvas: HTMLCanvasElement,
@@ -102,6 +104,10 @@ export class OrbitCamera {
     };
   }
 
+  setReducedMotion(force: boolean): void {
+    this.forcedReducedMotion = force;
+  }
+
   setTarget(x: number, y: number, z: number): void {
     this.desiredTarget.set(x, y, z);
     this.clampTarget(this.desiredTarget);
@@ -124,7 +130,8 @@ export class OrbitCamera {
   /** Advance easing and keyboard panning. `frameMs` keeps it frame-rate free. */
   update(frameMs: number): void {
     this.applyKeyboardPan(frameMs);
-    const smoothing = this.reducedMotion ? 1 : 1 - Math.pow(1 - DAMPING, frameMs / 16.67);
+    const calm = this.reducedMotion || this.forcedReducedMotion;
+    const smoothing = calm ? 1 : 1 - Math.pow(1 - DAMPING, frameMs / 16.67);
     // A negative or absurd frame time must never ease the camera backwards.
     this.apply(Math.min(1, Math.max(0, smoothing)));
   }

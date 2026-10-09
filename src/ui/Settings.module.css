@@ -113,3 +113,43 @@
   color: var(--text) !important;
   border-color: var(--border) !important;
 }
+
+.heading {
+  margin: 6px 0 0;
+  font-family: var(--font-display);
+  font-size: 10px;
+  line-height: 1.6;
+  color: var(--muted);
+  text-transform: lowercase;
+}
+
+.advanced {
+  border-top: 3px solid var(--border);
+  padding-top: 8px;
+}
+
+.advancedSummary {
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+  font-weight: 700;
+  font-size: 14px;
+}
+
+.perf {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 4px 12px;
+  margin: 8px 0 0;
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+}
+
+.perf dt {
+  color: var(--muted);
+}
+
+.perf dd {
+  margin: 0;
+}

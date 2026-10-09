@@ -23,7 +23,7 @@ async function switchToModel(page: Page): Promise<void> {
   await page.waitForFunction(() => (window.__app?.frames ?? 0) > 10, undefined, {
     timeout: 20_000,
   });
-  await page.click('summary');
+  await page.click('summary:has-text("Settings")');
   await page.click('button:has-text("Use this model")');
   await page.waitForTimeout(200);
 }
@@ -168,9 +168,9 @@ test.describe('with a model behind her', () => {
     await page.waitForFunction(() => (window.__app?.frames ?? 0) > 10, undefined, {
       timeout: 20_000,
     });
-    await page.click('summary');
+    await page.click('summary:has-text("Settings")');
     await page.fill('input[type=password]', 'sk-canary-abc123');
-    await page.check('input[type=checkbox]');
+    await page.getByLabel(/keep the key/i).check();
     await page.click('button:has-text("Use this model")');
     await say(page, 'wander');
 

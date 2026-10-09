@@ -32,6 +32,7 @@ import {
   onForgetKey,
   onPlayerAction,
   paletteOpen,
+  perfView,
   preferences,
   settingsOpen,
   showToast,
@@ -110,8 +111,16 @@ function voice(note: string, detail: Record<string, unknown> | undefined): strin
   }
 }
 
+/** Blocks from the orbit point that the near render distance keeps. */
+export const NEAR_DISTANCE = 24;
+/** Frames between perf readouts, and the window they summarise. */
+const PERF_EVERY = 30;
+const PERF_WINDOW = 120;
+
 export interface Game {
   tick(): void;
+  /** Once per drawn frame, for the perf readout. */
+  frame(frameMs: number): void;
   /** Send a line of text to Luciana, as if typed. */
   send(text: string): void;
   dispose(): void;
@@ -424,6 +433,25 @@ export function createGame(view: WorldView, loop: FixedLoop): Game {
     else document.documentElement.dataset.theme = theme;
   });
 
+  const stopMotion = effect(() => {
+    view.setReducedMotion(preferences.value.motion === 'reduced');
+  });
+
+  // Phones get the near distance unless the player says otherwise.
+  const smallScreen = (): boolean =>
+    window.innerWidth < 720 || window.matchMedia('(pointer: coarse)').matches;
+  const applyDistance = (): void => {
+    const choice = preferences.value.renderDistance;
+    const near = choice === 'near' || (choice === 'auto' && smallScreen());
+    view.setRenderDistance(near ? NEAR_DISTANCE : null);
+  };
+  const stopDistance = effect(applyDistance);
+  window.addEventListener('resize', applyDistance);
+
+  const frameTimes: number[] = [];
+  let sinceReadout = 0;
+  let nodesSeen = 0;
+
   let sinceStatus = 0;
 
   return {
@@ -436,13 +464,39 @@ export function createGame(view: WorldView, loop: FixedLoop): Game {
         if (kit) refreshStatus(kit);
       }
     },
+    frame(frameMs: number): void {
+      frameTimes.push(frameMs);
+      if (frameTimes.length > PERF_WINDOW) frameTimes.shift();
+      if (++sinceReadout < PERF_EVERY) return;
+      sinceReadout = 0;
+      // Nobody is looking unless the panel is open, so do nothing until then.
+      if (!settingsOpen.value) return;
+
+      const sorted = [...frameTimes].sort((a, b) => a - b);
+      const at = (q: number): number =>
+        sorted[Math.min(sorted.length - 1, Math.floor(q * sorted.length))] ?? 0;
+      const nodes = view.kits.reduce((sum, kit) => sum + kit.pathNodes, 0);
+      const perFrame = (nodes - nodesSeen) / PERF_EVERY;
+      nodesSeen = nodes;
+      perfView.value = {
+        frameP50: at(0.5),
+        frameP95: at(0.95),
+        frameMax: sorted[sorted.length - 1] ?? 0,
+        drawCalls: view.perf.drawCalls,
+        visibleChunks: view.perf.visibleChunks,
+        pathNodesPerFrame: perFrame,
+      };
+    },
     send,
     dispose(): void {
       onCommand.value = () => undefined;
       onBlockMenuChoice.value = () => undefined;
       onPlayerAction.value = () => undefined;
       window.removeEventListener('keydown', onKeyDown);
+      window.removeEventListener('resize', applyDistance);
       stopTheme();
+      stopMotion();
+      stopDistance();
       queues.clear();
     },
   };

@@ -65,6 +65,7 @@ export async function start(): Promise<void> {
     },
     render: (alpha, frameMs) => {
       view.render(loop.dayPhase, frameMs, alpha);
+      game.frame(frameMs);
     },
   });
   const game = createGame(view, loop);

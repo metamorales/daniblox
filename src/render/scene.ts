@@ -48,6 +48,10 @@ export interface WorldView {
   pointedAt(): { x: number; y: number; z: number } | null;
   /** The player's own edit, with the squash effect. False when nothing changed. */
   editBlock(x: number, y: number, z: number, id: number): boolean;
+  /** Turn easing and bobbing off, on top of whatever the system asks for. */
+  setReducedMotion(force: boolean): void;
+  /** Draw only chunks within this many blocks of the orbit point; null draws all. */
+  setRenderDistance(limit: number | null): void;
   /** Frames drawn since start. The e2e suite reads this to prove the loop runs. */
   frames: number;
   render(dayPhase: number, frameMs: number, alpha?: number): void;
@@ -124,6 +128,10 @@ export async function createWorldView(
   window.addEventListener('resize', resize);
 
   const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
+  let forcedReducedMotion = false;
+  let distanceLimit: number | null = null;
+  const FOG_NEAR = 95;
+  const FOG_FAR = 210;
 
   const view: WorldView = {
     world,
@@ -149,15 +157,25 @@ export async function createWorldView(
       return interaction.setBlock(x, y, z, id);
     },
 
+    setReducedMotion(force): void {
+      forcedReducedMotion = force;
+      orbit.setReducedMotion(force);
+    },
+
+    setRenderDistance(limit): void {
+      distanceLimit = limit;
+    },
+
     render(dayPhase: number, frameMs: number, alpha = 1): void {
       const palette = skyAt(dayPhase);
       sky.apply(palette);
       material.setNightTint(palette.tint);
       material.setSkyColours(palette.zenith, palette.horizon);
+      const calm = reducedMotion.matches || forcedReducedMotion;
       for (const mesh of kitMeshes) {
         mesh.setNightTint(palette.tint);
         mesh.setSkyColours(palette.zenith, palette.horizon);
-        mesh.update(frameMs, alpha, orbit.camera.position, reducedMotion.matches);
+        mesh.update(frameMs, alpha, orbit.camera.position, calm);
       }
 
       orbit.update(frameMs);
@@ -171,7 +189,15 @@ export async function createWorldView(
       interaction.update(frameMs);
 
       const remesh = chunks.update();
-      const visible = chunks.cull(orbit.camera);
+      const target = orbit.target;
+      const visible = chunks.cull(orbit.camera, target, distanceLimit ?? Infinity);
+      if (distanceLimit === null) {
+        material.setFog(FOG_NEAR, FOG_FAR);
+      } else {
+        // Fog closes in with the limit, so the cut-off reads as haze, not a cliff.
+        const reach = orbit.camera.position.distanceTo(target) + distanceLimit;
+        material.setFog(reach - distanceLimit * 0.6, reach);
+      }
       renderer.render(scene, orbit.camera);
 
       perf.frameMs = frameMs;

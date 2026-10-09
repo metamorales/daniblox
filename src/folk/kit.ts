@@ -58,6 +58,8 @@ export class Kit {
   activity: string | null = null;
   /** Set when the last request could not be met, for the chat layer to voice. */
   lastProblem: string | null = null;
+  /** Pathfinding nodes expanded so far, for the perf panel. */
+  pathNodes = 0;
 
   private path: Cell[] = [];
   private pathIndex = 0;
@@ -198,7 +200,9 @@ export class Kit {
     const search = this.search;
     if (!search) return false;
 
+    const before = search.nodesExpanded;
     const status = search.step(PATH_BUDGET_MS, now);
+    this.pathNodes += search.nodesExpanded - before;
     if (status === 'running') {
       this.state = 'thinking';
       return true;

@@ -141,6 +141,21 @@ export function setPreference<K extends keyof Preferences>(key: K, value: Prefer
   preferences.value = { ...preferences.value, [key]: value };
 }
 
+/** Numbers for the Advanced panel. Null until the panel has been opened. */
+export interface PerfView {
+  readonly frameP50: number;
+  readonly frameP95: number;
+  readonly frameMax: number;
+  readonly drawCalls: number;
+  readonly visibleChunks: number;
+  readonly pathNodesPerFrame: number;
+}
+
+export const perfView = signal<PerfView | null>(null);
+
+/** Show the three-step welcome again, from the settings panel. */
+export const onReplayOnboarding = signal<() => void>(() => undefined);
+
 const THEME_ORDER: readonly ThemeChoice[] = ['system', 'light', 'dark'];
 
 export function cycleTheme(): ThemeChoice {

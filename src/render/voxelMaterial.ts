@@ -141,6 +141,14 @@ export class VoxelMaterial extends ShaderMaterial {
   }
 
   /** Day and night is one tint multiply; light intensities never change. */
+  /** Where fog starts and where it is total, in blocks from the camera. */
+  setFog(near: number, far: number): void {
+    const start = this.uniforms.uFogNear;
+    const end = this.uniforms.uFogFar;
+    if (start) start.value = near;
+    if (end) end.value = far;
+  }
+
   setNightTint(colour: Color): void {
     (this.uniforms.uNightTint?.value as Color | undefined)?.copy(colour);
   }

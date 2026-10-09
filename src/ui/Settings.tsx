@@ -7,12 +7,19 @@ import {
   modelSettings,
   onApplyModel,
   onForgetKey,
+  onReplayOnboarding,
+  perfView,
+  preferences,
+  setPreference,
   settingsOpen,
+  type DistanceChoice,
+  type ThemeChoice,
 } from './state';
 
 /**
- * Where a model gets plugged in. Everything here is optional: with nothing
- * filled in, Luciana still works.
+ * Everything optional lives here: how the game looks and moves, how far it
+ * draws, which model is behind Luciana if any, and the numbers under
+ * Advanced. With nothing touched, Luciana still works.
  */
 export function Settings() {
   const current = modelSettings.value;
@@ -24,6 +31,8 @@ export function Settings() {
 
   const status = brainStatus.value;
   const usingModel = brainMode.value === 'model';
+  const prefs = preferences.value;
+  const perf = perfView.value;
 
   return (
     <details
@@ -41,9 +50,64 @@ export function Settings() {
       </summary>
 
       <div class={styles.body}>
+        <h2 class={styles.heading}>Look and feel</h2>
+
+        <label class={styles.field}>
+          Theme
+          <select
+            id="pref-theme"
+            value={prefs.theme}
+            onChange={(event) => {
+              setPreference(
+                'theme',
+                (event.currentTarget as HTMLSelectElement).value as ThemeChoice,
+              );
+            }}
+          >
+            <option value="system">Follow the system</option>
+            <option value="light">Light</option>
+            <option value="dark">Dark</option>
+          </select>
+        </label>
+
+        <label class={styles.check}>
+          <input
+            id="pref-motion"
+            type="checkbox"
+            checked={prefs.motion === 'reduced'}
+            onChange={(event) => {
+              setPreference(
+                'motion',
+                (event.currentTarget as HTMLInputElement).checked ? 'reduced' : 'system',
+              );
+            }}
+          />
+          Reduce motion: no camera easing, no bobbing
+        </label>
+
+        <label class={styles.field}>
+          Render distance
+          <select
+            id="pref-distance"
+            value={prefs.renderDistance}
+            onChange={(event) => {
+              setPreference(
+                'renderDistance',
+                (event.currentTarget as HTMLSelectElement).value as DistanceChoice,
+              );
+            }}
+          >
+            <option value="auto">Automatic: near on phones</option>
+            <option value="near">Near</option>
+            <option value="far">Far, the whole meadow</option>
+          </select>
+        </label>
+
+        <h2 class={styles.heading}>Luciana's brain</h2>
+
         <p class={styles.note}>
-          Luciana works with nothing set up. Point her at a model and she stops needing exact
-          wording. A model running on your own machine needs no key and costs nothing.
+          She works with nothing set up. Point her at a model and she stops needing exact wording. A
+          model running on your own machine needs no key and costs nothing.
         </p>
 
         <label class={styles.field}>
@@ -144,6 +208,41 @@ export function Settings() {
             {String(status.used)} of {String(status.limit)} messages used this minute
           </p>
         )}
+
+        <h2 class={styles.heading}>Help</h2>
+
+        <div class={styles.row}>
+          <button
+            type="button"
+            class={styles.secondary}
+            onClick={() => {
+              onReplayOnboarding.value();
+            }}
+          >
+            Show the welcome again
+          </button>
+        </div>
+
+        <details class={styles.advanced}>
+          <summary class={styles.advancedSummary}>Advanced</summary>
+          {perf ? (
+            <dl class={styles.perf} aria-label="Performance">
+              <dt>frame time</dt>
+              <dd>
+                {perf.frameP50.toFixed(1)} ms typical · {perf.frameP95.toFixed(1)} ms p95 ·{' '}
+                {perf.frameMax.toFixed(1)} ms worst
+              </dd>
+              <dt>draw calls</dt>
+              <dd>
+                {String(perf.drawCalls)} for {String(perf.visibleChunks)} visible chunks
+              </dd>
+              <dt>path nodes per frame</dt>
+              <dd>{perf.pathNodesPerFrame.toFixed(1)}</dd>
+            </dl>
+          ) : (
+            <p class={styles.note}>Numbers appear here a moment after the panel opens.</p>
+          )}
+        </details>
       </div>
     </details>
   );

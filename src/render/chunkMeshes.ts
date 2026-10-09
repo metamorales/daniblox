@@ -83,7 +83,7 @@ export class ChunkMeshes {
    * perf panel reports is the number actually drawn rather than the number of
    * meshes that exist.
    */
-  cull(camera: Camera): number {
+  cull(camera: Camera, focus?: { x: number; z: number }, limit = Infinity): number {
     camera.updateMatrixWorld();
     // The renderer refreshes this during render, which is after this runs, so
     // culling against it would always be one frame behind.
@@ -94,8 +94,14 @@ export class ChunkMeshes {
     let visible = 0;
     for (const [key, mesh] of this.meshes) {
       const sphere = this.bounds.get(key);
-      mesh.visible = sphere ? this.frustum.intersectsSphere(sphere) : true;
-      if (mesh.visible) visible++;
+      let shown = sphere ? this.frustum.intersectsSphere(sphere) : true;
+      // The render-distance setting: chunks past the limit from the point the
+      // camera orbits are skipped, which is what a phone needs.
+      if (shown && sphere && focus && Number.isFinite(limit)) {
+        shown = Math.hypot(sphere.center.x - focus.x, sphere.center.z - focus.z) <= limit;
+      }
+      mesh.visible = shown;
+      if (shown) visible++;
     }
     return visible;
   }
