@@ -90,6 +90,23 @@ describe('fixed-step loop', () => {
     expect(h.loop.ticks).toBe(before);
   });
 
+  it('never reports a negative frame time, even when the first frame predates the start', () => {
+    // Animation-frame timestamps mark the frame's start, which can be earlier
+    // than the clock read when the loop was armed.
+    const frameTimes: number[] = [];
+    const loop = new FixedLoop({
+      now: () => 1000,
+      tick: () => undefined,
+      render: (_alpha, frameMs) => frameTimes.push(frameMs),
+    });
+    loop.start();
+    loop.advance(990);
+    loop.advance(1010);
+    expect(frameTimes[0]).toBe(0);
+    expect(frameTimes[1]).toBe(20);
+    expect(loop.ticks).toBe(0);
+  });
+
   it('never simulates more than a quarter second of a single long frame', () => {
     const h = harness();
     h.loop.start();

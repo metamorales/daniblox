@@ -95,7 +95,9 @@ export class OrbitCamera {
   targetCell(): { x: number; y: number; z: number } {
     return {
       x: Math.floor(this.target.x),
-      y: Math.floor(this.target.y),
+      // Never below the world: the reticle rests on the ground and the brain
+      // schema rejects a negative coordinate.
+      y: Math.max(0, Math.floor(this.target.y)),
       z: Math.floor(this.target.z),
     };
   }
@@ -123,7 +125,8 @@ export class OrbitCamera {
   update(frameMs: number): void {
     this.applyKeyboardPan(frameMs);
     const smoothing = this.reducedMotion ? 1 : 1 - Math.pow(1 - DAMPING, frameMs / 16.67);
-    this.apply(smoothing);
+    // A negative or absurd frame time must never ease the camera backwards.
+    this.apply(Math.min(1, Math.max(0, smoothing)));
   }
 
   private apply(smoothing: number): void {

@@ -211,3 +211,8 @@ What: the local default is now qwen3.5:9b (Apache 2.0, confirmed from the model 
 Why: this model reasons by default and the Ollama build of it does not support JSON mode. Sent as before, the server refused the request outright; with both fields stripped together, the model spent the entire 200-token budget thinking and the visible reply was empty, which looked like a ten-second timeout. Dropping one field at a time keeps the no-reasoning request alive.
 Rejected: a per-model settings toggle (one more thing to explain), and a hand-built model file on the Ollama side (fixes one machine, not the clone).
 Also pulled: qwen3.5:27b for chat outside the game. It needs about 18.4 GiB free and this 24 GB machine has 17 GiB free with the game and a browser open, so it is a close-everything-else model and not a default.
+
+## M5-7 — Time never runs backwards, and the reticle never sits below the world (2026-10-09)
+
+What: the loop clamps a frame's elapsed time at zero before anyone sees it, the camera easing is held to the 0..1 range, and the reticle cell's height is never negative. The scripted brain now logs loudly when its own output fails the schema.
+Why: under load, two end-to-end tests failed about one run in twenty with "something went sideways", which is the line for an output of ours that failed our own schema. The logged cause was a reticle one block below the world. An animation-frame timestamp marks the start of the frame, which can fall before the clock read when the loop was armed, so the first frame's elapsed time came out negative, the easing ran backwards for a frame, and a command sent at that moment pointed at y = -1. Verified: 64 runs at four workers, zero failures, where before it was two in 32.

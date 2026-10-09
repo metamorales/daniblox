@@ -97,6 +97,9 @@ export class ScriptedBrain implements Brain {
   private checked(output: BrainOutput): BrainOutput {
     const result = validate(output);
     if (result.ok) return result.value;
+    // Loud on purpose: this is our own bug, not the player's, and the tests
+    // treat a console error as a failure.
+    console.error(`scripted brain produced an invalid reply: ${result.error}`);
     return { say: 'Something went sideways in my head. Try again?', actions: [] };
   }
 }

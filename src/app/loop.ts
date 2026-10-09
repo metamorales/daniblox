@@ -116,9 +116,13 @@ export class FixedLoop {
   advance(currentTime: number): void {
     if (!this.running) return;
 
-    const frameMs = Math.min(currentTime - this.lastTime, MAX_FRAME_MS);
+    // An animation-frame timestamp is the frame's start, which can fall
+    // before the clock read in start(), so the first delta can be negative.
+    // Clamped here, once, so neither the simulation nor the renderer ever
+    // sees time run backwards.
+    const frameMs = Math.max(0, Math.min(currentTime - this.lastTime, MAX_FRAME_MS));
     this.lastTime = currentTime;
-    this.accumulator += Math.max(frameMs, 0);
+    this.accumulator += frameMs;
 
     while (this.accumulator >= TICK_MS) {
       this.accumulator -= TICK_MS;
