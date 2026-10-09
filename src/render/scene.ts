@@ -54,6 +54,12 @@ export interface WorldView {
   setReducedMotion(force: boolean): void;
   /** Draw only chunks within this many blocks of the orbit point; null draws all. */
   setRenderDistance(limit: number | null): void;
+  /** Replace every block, as a load does, and remesh at once. */
+  loadWorld(bytes: Uint8Array): void;
+  /** A new seed: regenerate, remesh, put the kits back at the start. */
+  resetWorld(seed: number): void;
+  /** What the current seed generates before any edit, for share links. */
+  baseWorld(): Uint8Array;
   /** Frames drawn since start. The e2e suite reads this to prove the loop runs. */
   frames: number;
   render(dayPhase: number, frameMs: number, alpha?: number): void;
@@ -76,6 +82,7 @@ export async function createWorldView(
 
   const world = new World(seed);
   generate(world);
+  let base = world.toBytes();
 
   const { texture } = await loadAtlas(atlasUrl);
   const material = new VoxelMaterial({ tiles: texture, unlitLayer: LAYER.gem });
@@ -97,6 +104,14 @@ export async function createWorldView(
   });
   const kits = [luciana];
   const kitMeshes = kits.map((kit) => new KitMesh(kit));
+
+  /** Stand each kit on the ground at its column, after the world changed under her. */
+  function settleKits(): void {
+    for (const kit of kits) {
+      const cell = kit.cell;
+      kit.teleport({ x: cell.x, y: world.surfaceHeight(cell.x, cell.z) + 1, z: cell.z });
+    }
+  }
   for (const mesh of kitMeshes) scene.add(mesh.group);
 
   const effects = new Group();
@@ -171,6 +186,28 @@ export async function createWorldView(
 
     setRenderDistance(limit): void {
       distanceLimit = limit;
+    },
+
+    loadWorld(bytes): void {
+      world.loadBytes(bytes);
+      chunks.rebuildAll();
+      settleKits();
+    },
+
+    resetWorld(seed): void {
+      world.reseed(seed);
+      generate(world);
+      base = world.toBytes();
+      chunks.rebuildAll();
+      for (const kit of kits) {
+        kit.inventory.clear();
+        kit.teleport({ x: spawnX, y: world.surfaceHeight(spawnX, spawnZ) + 1, z: spawnZ });
+      }
+      orbit.setTarget(WORLD_X / 2, WORLD_Y * 0.42, WORLD_Z / 2);
+    },
+
+    baseWorld(): Uint8Array {
+      return base.slice();
     },
 
     render(dayPhase: number, frameMs: number, alpha = 1): void {

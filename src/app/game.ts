@@ -23,6 +23,8 @@ import {
   blockMenu,
   brainMode,
   brainStatus,
+  chat,
+  clearChat,
   cycleTheme,
   kitStatus,
   modelSettings,
@@ -33,16 +35,22 @@ import {
   onOnboardingDone,
   onPlayerAction,
   onReplayOnboarding,
+  onResetWorld,
+  onShareLink,
   onboarding,
   paletteOpen,
   perfView,
   preferences,
+  restoreChat,
   settingsOpen,
   showToast,
   thinking,
 } from '../ui/state';
 import { isFirstRun, markWelcomeSeen } from './firstRun';
 import { forgetKey, getKey, restoreKey, setKey } from './keyStore';
+import { encodeVoxels, measure, serialize, type SaveFile } from './persistence';
+import type { Session } from './session';
+import { applyEdits, encodeShare } from './share';
 import { blockById as lookupBlock } from '../world/blocks';
 import type { PromptSituation } from '../brain/prompt';
 import type { FixedLoop } from './loop';
@@ -117,6 +125,8 @@ function voice(note: string, detail: Record<string, unknown> | undefined): strin
 
 /** Blocks from the orbit point that the near render distance keeps. */
 export const NEAR_DISTANCE = 24;
+/** Ticks between looks at whether anything needs saving: two seconds. */
+const SAVE_EVERY_TICKS = 40;
 /** Frames between perf readouts, and the window they summarise. */
 const PERF_EVERY = 30;
 const PERF_WINDOW = 120;
@@ -130,7 +140,7 @@ export interface Game {
   dispose(): void;
 }
 
-export function createGame(view: WorldView, loop: FixedLoop): Game {
+export function createGame(view: WorldView, loop: FixedLoop, session: Session): Game {
   const scripted = new ScriptedBrain();
   let model: LlmBrain | null = null;
   const history: ChatTurn[] = [];
@@ -143,7 +153,9 @@ export function createGame(view: WorldView, loop: FixedLoop): Game {
     setDayPhase: (phase) => {
       loop.dayPhase = phase;
     },
-    seed: view.world.seed,
+    get seed() {
+      return view.world.seed;
+    },
     report: (kit, note, detail) => {
       const line = voice(note, detail);
       if (!line) return;
@@ -252,17 +264,178 @@ export function createGame(view: WorldView, loop: FixedLoop): Game {
     showToast('Back to her own words.');
   };
 
-  // A key the player chose to keep for this tab survives a reload.
-  const restored = restoreKey();
-  if (restored) {
-    const saved = modelSettings.value;
-    useModel({
+  // --- what this visit starts from ---
+
+  function applySave(save: SaveFile): void {
+    for (const saved of save.kits) {
+      const kit = view.kits.find((k) => k.id === saved.id);
+      if (!kit) continue;
+      kit.teleport(saved.at);
+      kit.inventory.clear();
+      for (const [id, count] of saved.inventory) if (count > 0) kit.inventory.set(id, count);
+    }
+    restoreChat(save.chat);
+    for (const line of save.chat.slice(-HISTORY_LENGTH)) remember(line.who, line.text);
+    preferences.value = { ...save.settings.preferences };
+    const saved = save.settings.model;
+    modelSettings.value = {
       provider: saved.provider,
       baseUrl: saved.baseUrl,
       model: saved.model,
+      remember: saved.remember,
+    };
+  }
+
+  if (session.voxels) view.loadWorld(session.voxels);
+  if (session.edits) view.loadWorld(applyEdits(view.baseWorld(), session.edits));
+  if (session.save) applySave(session.save);
+  for (const kit of view.kits) refreshStatus(kit);
+
+  // A key kept for this tab survives a reload; a local model needs none and
+  // comes back by itself when it was in use.
+  const restored = restoreKey();
+  const savedModel = session.save?.settings.model;
+  if (restored || (savedModel?.active && savedModel.provider === 'openai')) {
+    const current = modelSettings.value;
+    useModel({
+      provider: current.provider,
+      baseUrl: current.baseUrl,
+      model: current.model,
       apiKey: restored,
     });
   }
+
+  // --- saving ---
+
+  let sharedUntilEdit = session.sharedUntilEdit;
+  let revisionAtLoad = view.world.revision;
+  let lastPrint = '';
+  let sinceSaveCheck = 0;
+  let quotaWarned = false;
+  let sizeWarned = false;
+
+  function snapshot(): SaveFile {
+    const current = modelSettings.value;
+    return {
+      version: 1,
+      seed: view.world.seed,
+      voxels: encodeVoxels(view.world.toBytes()),
+      kits: view.kits.map((kit) => ({
+        id: kit.id,
+        name: kit.name,
+        at: kit.cell,
+        inventory: [...kit.inventory.entries()].filter(([, count]) => count > 0),
+      })),
+      chat: chat.value.map(({ who, text }) => ({ who, text })),
+      settings: {
+        preferences: { ...preferences.value },
+        model: {
+          provider: current.provider,
+          baseUrl: current.baseUrl,
+          model: current.model,
+          remember: current.remember,
+          active: model !== null,
+        },
+      },
+    };
+  }
+
+  /** Cheap to compute and changes whenever anything worth saving does. */
+  function fingerprint(): string {
+    const kit = view.kits[0];
+    const pocket = kit ? [...kit.inventory.entries()].flat().join(',') : '';
+    const cell = kit ? `${String(kit.cell.x)},${String(kit.cell.y)},${String(kit.cell.z)}` : '';
+    const last = chat.value[chat.value.length - 1];
+    return [
+      view.world.revision,
+      chat.value.length,
+      last?.id ?? 0,
+      cell,
+      pocket,
+      JSON.stringify(preferences.value),
+      JSON.stringify(modelSettings.value),
+      model !== null,
+    ].join('|');
+  }
+
+  function writeSave(): void {
+    if (session.protectSave || sharedUntilEdit) return;
+    const text = serialize(snapshot());
+    if (measure(text).warn && !sizeWarned) {
+      sizeWarned = true;
+      showToast('The save is past four megabytes. It still works, but that is a lot.');
+    }
+    const result = session.store.set(text);
+    if (result !== 'ok' && !quotaWarned) {
+      quotaWarned = true;
+      showToast(
+        result === 'quota'
+          ? 'Storage is full, so progress is not being saved.'
+          : 'The save could not be written, so progress is not being saved.',
+      );
+    }
+  }
+
+  /** Save if anything changed since the last look. */
+  function saveIfChanged(): void {
+    const print = fingerprint();
+    if (print === lastPrint) return;
+    lastPrint = print;
+    writeSave();
+  }
+
+  const onPageHide = (): void => {
+    saveIfChanged();
+  };
+  const onVisibility = (): void => {
+    if (document.hidden) saveIfChanged();
+  };
+  window.addEventListener('pagehide', onPageHide);
+  document.addEventListener('visibilitychange', onVisibility);
+
+  let noteIndex = 0;
+  for (const note of session.notes) {
+    setTimeout(() => showToast(note, 4000), noteIndex++ * 4200);
+  }
+
+  onResetWorld.value = () => {
+    session.store.remove();
+    const seed = (Math.random() * 0xffffffff) >>> 0;
+    for (const queue of queues.values()) queue.clear();
+    view.resetWorld(seed);
+    clearChat();
+    history.length = 0;
+    sharedUntilEdit = false;
+    revisionAtLoad = view.world.revision;
+    lastPrint = '';
+    window.history.replaceState(null, '', window.location.pathname + window.location.search);
+    for (const kit of view.kits) refreshStatus(kit);
+    showToast('A new meadow. Your settings are as they were.');
+  };
+
+  onShareLink.value = () => {
+    const link = encodeShare(view.world.seed, view.baseWorld(), view.world.toBytes());
+    window.history.replaceState(
+      null,
+      '',
+      window.location.pathname + window.location.search + link.hash,
+    );
+    const url = window.location.href;
+    const tail = link.complete
+      ? ''
+      : ' It carries the seed only: there were too many edits to fit in a link.';
+    const say = (copied: boolean): void => {
+      showToast((copied ? 'Link copied.' : 'The link is in the address bar.') + tail, 5000);
+    };
+    navigator.clipboard
+      .writeText(url)
+      .then(() => {
+        say(true);
+      })
+      .catch(() => {
+        say(false);
+      });
+  };
 
   function run(
     output: { say: string; actions: readonly import('../brain/schema').Action[] },
@@ -475,6 +648,17 @@ export function createGame(view: WorldView, loop: FixedLoop): Game {
         const kit = view.kits[0];
         if (kit) refreshStatus(kit);
       }
+      // A guest world becomes the player's own the moment they change it, and
+      // the link comes off the address bar so a reload opens the save.
+      if (sharedUntilEdit && view.world.revision !== revisionAtLoad) {
+        sharedUntilEdit = false;
+        window.history.replaceState(null, '', window.location.pathname + window.location.search);
+        showToast('Your save now holds this world.');
+      }
+      if (++sinceSaveCheck >= SAVE_EVERY_TICKS) {
+        sinceSaveCheck = 0;
+        saveIfChanged();
+      }
     },
     frame(frameMs: number): void {
       frameTimes.push(frameMs);
@@ -506,6 +690,10 @@ export function createGame(view: WorldView, loop: FixedLoop): Game {
       onPlayerAction.value = () => undefined;
       window.removeEventListener('keydown', onKeyDown);
       window.removeEventListener('resize', applyDistance);
+      window.removeEventListener('pagehide', onPageHide);
+      document.removeEventListener('visibilitychange', onVisibility);
+      onResetWorld.value = () => undefined;
+      onShareLink.value = () => undefined;
       stopTheme();
       stopMotion();
       stopDistance();

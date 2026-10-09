@@ -253,3 +253,24 @@ Why: Lighthouse pulls in a large tree for a check that runs a handful of times a
 What: a 16 by 16 glyph for walking, mining, building, following, wandering and reshaping floats above Luciana's name while a job runs, and a two-pixel bar along its bottom fills as she works through a block. It is one extra draw call per kit while she is busy, so the draw-call budget is now visible chunks plus seven per kit plus four overlays.
 Why: the spec's MVP asks for a floating icon for the current action, and section 3.8 rule 6 wants mining progress visible. Putting the bar on the icon rather than over the target block keeps it in one place the eye already watches, and avoids a second billboard that would have to find the block from the kit's job.
 Rejected: a bar over the target block as well. Nothing stops it being added later; the queue already exposes the progress.
+
+## M7-1 — The saver looks every two seconds rather than listening everywhere (2026-10-09)
+
+What: every forty ticks the game builds a cheap fingerprint (world revision, chat length and last id, Luciana's cell and pockets, the settings) and writes the save only when it differs from the last one. The tab going hidden or away writes at once.
+Why: edits come from the player's hand, from Luciana's jobs, from the world-scale powers and from the chat, in four different modules. One polling point in the app layer saves within two seconds of any of them without wiring an event through each, and never writes while nothing changes.
+Rejected: a change event on the world plus listeners on chat and settings. More plumbing for the same two-second promise.
+
+## M7-2 — A shared world is a guest until the first change (2026-10-09)
+
+What: opening a share link loads that world for the session. If the browser already holds a save, it is left alone until the player changes something in the shared world, at which point a toast says the save now holds this world.
+Why: spec R8's share links would otherwise overwrite a player's own meadow the moment they clicked a friend's link. The first edit is the clearest sign they mean to keep it.
+
+## M7-3 — A save from a newer build is left untouched (2026-10-09)
+
+What: a save whose version is higher than this build's is neither read nor overwritten; the visit runs unsaved with a toast saying so. A document with no version is read as the pre-release v0 shape and brought forward. The v2 reader has a named place in `migrate` and does not exist yet.
+Why: the spec asks for a versioned migration stub. Guessing at a newer shape could destroy a save; refusing to write is the only safe default.
+
+## M7-4 — The world keeps a revision counter (2026-10-09)
+
+What: every real block change, load or reseed bumps an integer on the world.
+Why: it is what lets the saver skip untouched frames, lets a guest world notice its first edit, and costs one increment.

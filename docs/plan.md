@@ -349,3 +349,22 @@ M0 checks that are automated rather than measured: the originality word check, t
 **Look test.** The four frames are in `docs/litmus/` (sunlit meadow at distance, a close slope, night, Luciana up close), captured by `tools/litmus.mjs` with the whole interface hidden. They have not yet been shown to five people; that step needs the owner and is recorded here as pending. One note on the fourth frame: it caught Luciana standing beside the ring rather than mid-dig, because the nearest bark was further than the capture waited; the action icon and its progress sweep are the subject of the next entry.
 
 **Render distance.** At the default view all 16 chunks are in the frustum; near keeps 4. A 375 px viewport switches to near by itself (settings.spec, mobile.spec).
+
+### M7 (2026-10-09, Apple Silicon, Playwright Chromium 1248 with SwiftShader)
+
+| Check                                                            | How                                                              | Status |
+| ---------------------------------------------------------------- | ---------------------------------------------------------------- | ------ |
+| Save and load round trip                                         | unit: serialize, parse, voxels decoded to the full 131,072 bytes | pass   |
+| Version-0 document migrates; newer is refused                    | unit                                                             | pass   |
+| 4 MB warning                                                     | unit: `measure` flags past the limit                             | pass   |
+| Storage off → memory store, one toast                            | unit: a getter that throws; app shows the note once              | pass   |
+| Storage full → toast, play continues                             | unit: `QuotaExceededError` → 'quota'; app toasts once            | pass   |
+| The key is never in the save                                     | unit: a save with a key field is refused; e2e: canary absent     | pass   |
+| Edit, chat, pockets and theme survive a reload                   | save.spec                                                        | pass   |
+| Reset removes the key, new seed, cell regenerated, settings kept | save.spec                                                        | pass   |
+| Share link reproduces edits in a fresh visit                     | save.spec with a second browser context                          | pass   |
+| A visitor's save is kept until the first edit in a shared world  | save.spec                                                        | pass   |
+| Over-length link → seed only                                     | unit: a checkerboard of edits                                    | pass   |
+| Damaged link → fallback with a toast                             | unit and save.spec                                               | pass   |
+
+Save size for a lightly edited meadow is about 3 KB; a link with a few edits is under 200 characters.

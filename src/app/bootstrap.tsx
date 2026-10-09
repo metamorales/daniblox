@@ -4,6 +4,7 @@ import { Shell } from '../ui/Shell';
 import { blockMenu } from '../ui/state';
 import { createGame } from './game';
 import { FixedLoop } from './loop';
+import { openSession } from './session';
 
 declare global {
   interface Window {
@@ -24,12 +25,6 @@ const CANVAS_LABEL =
 
 const ATLAS_URL = new URL('atlas/atlas.png', document.baseURI).href;
 
-function pickSeed(): number {
-  const fromHash = /[#&]s=(\d+)/.exec(window.location.hash);
-  if (fromHash?.[1]) return Number.parseInt(fromHash[1], 10) >>> 0;
-  return 20_260_409;
-}
-
 export async function start(): Promise<void> {
   const root = document.getElementById('app');
   if (!root) throw new Error('Daniblox could not start: #app is missing from the page.');
@@ -48,7 +43,9 @@ export async function start(): Promise<void> {
   root.appendChild(overlay);
   render(<Shell />, overlay);
 
-  const view = await createWorldView(canvas, ATLAS_URL, pickSeed(), {
+  // What to start from: a share link, the save, or a fresh meadow.
+  const session = openSession(window.location.hash);
+  const view = await createWorldView(canvas, ATLAS_URL, session.seed, {
     onPick: (pick) => {
       blockMenu.value = pick;
     },
@@ -68,7 +65,7 @@ export async function start(): Promise<void> {
       game.frame(frameMs);
     },
   });
-  const game = createGame(view, loop);
+  const game = createGame(view, loop, session);
   window.__game = game;
   window.__loop = loop;
   loop.bindVisibility();

@@ -45,8 +45,12 @@ export interface Chunk {
 
 export class World {
   readonly chunks: readonly Chunk[];
+  /** Bumped on every change, so a saver can tell at a glance whether to write. */
+  revision = 0;
+  private seedValue: number;
 
-  constructor(public readonly seed: number) {
+  constructor(seed: number) {
+    this.seedValue = seed >>> 0;
     const chunks: Chunk[] = [];
     for (let cz = 0; cz < CHUNKS_Z; cz++) {
       for (let cx = 0; cx < CHUNKS_X; cx++) {
@@ -54,6 +58,16 @@ export class World {
       }
     }
     this.chunks = chunks;
+  }
+
+  get seed(): number {
+    return this.seedValue;
+  }
+
+  /** A new seed for a reset; the caller regenerates the terrain after. */
+  reseed(seed: number): void {
+    this.seedValue = seed >>> 0;
+    this.revision++;
   }
 
   static chunkIndex(cx: number, cz: number): number {
@@ -101,6 +115,7 @@ export class World {
     if (chunk.blocks[index] === id) return false;
     chunk.blocks[index] = id;
     chunk.dirty = true;
+    this.revision++;
 
     const lx = x & 15;
     const lz = z & 15;
@@ -141,5 +156,6 @@ export class World {
       chunk.blocks.set(bytes.subarray(i * CHUNK_VOLUME, (i + 1) * CHUNK_VOLUME));
       chunk.dirty = true;
     });
+    this.revision++;
   }
 }

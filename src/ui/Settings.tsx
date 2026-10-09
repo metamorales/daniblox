@@ -8,6 +8,8 @@ import {
   onApplyModel,
   onForgetKey,
   onReplayOnboarding,
+  onResetWorld,
+  onShareLink,
   perfView,
   preferences,
   setPreference,
@@ -28,6 +30,7 @@ export function Settings() {
   const [model, setModel] = useState(current.model);
   const [apiKey, setApiKey] = useState('');
   const [remember, setRemember] = useState(current.remember);
+  const [confirmReset, setConfirmReset] = useState(false);
 
   const status = brainStatus.value;
   const usingModel = brainMode.value === 'model';
@@ -207,6 +210,56 @@ export function Settings() {
           <p class={styles.counter}>
             {String(status.used)} of {String(status.limit)} messages used this minute
           </p>
+        )}
+
+        <h2 class={styles.heading}>This world</h2>
+
+        <div class={styles.row}>
+          <button
+            type="button"
+            class={styles.secondary}
+            onClick={() => {
+              onShareLink.value();
+            }}
+          >
+            Copy share link
+          </button>
+          {!confirmReset && (
+            <button
+              type="button"
+              class={styles.secondary}
+              onClick={() => {
+                setConfirmReset(true);
+              }}
+            >
+              Reset the world
+            </button>
+          )}
+        </div>
+        {confirmReset && (
+          <div class={styles.confirm} role="group" aria-label="Confirm the reset">
+            <p class={styles.note}>Everything built here goes, and a new meadow takes its place.</p>
+            <div class={styles.row}>
+              <button
+                type="button"
+                onClick={() => {
+                  setConfirmReset(false);
+                  onResetWorld.value();
+                }}
+              >
+                Yes, reset it
+              </button>
+              <button
+                type="button"
+                class={styles.secondary}
+                onClick={() => {
+                  setConfirmReset(false);
+                }}
+              >
+                Keep it
+              </button>
+            </div>
+          </div>
         )}
 
         <h2 class={styles.heading}>Help</h2>

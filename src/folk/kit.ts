@@ -136,6 +136,20 @@ export class Kit {
     this.state = 'idle';
   }
 
+  /** Put the kit somewhere at once, with no walk: a load or a reset. */
+  teleport(cell: Cell): void {
+    this.stop();
+    this.position.x = cell.x + 0.5;
+    this.position.y = cell.y;
+    this.position.z = cell.z + 0.5;
+    this.previous.x = this.position.x;
+    this.previous.y = this.position.y;
+    this.previous.z = this.position.z;
+    this.activity = null;
+    this.progress = null;
+    this.lastProblem = null;
+  }
+
   /** One simulation step. */
   tick(world: World, now: () => number = () => performance.now()): void {
     this.previous.x = this.position.x;

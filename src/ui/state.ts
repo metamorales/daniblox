@@ -58,6 +58,16 @@ export function clearChat(): void {
   chat.value = [];
 }
 
+/** Put saved lines back, in order, with fresh ids. */
+export function restoreChat(lines: readonly { who: ChatLine['who']; text: string }[]): void {
+  chat.value = lines.slice(-MAX_CHAT_LINES).map((line) => ({ id: nextId++, ...line }));
+}
+
+/** Remove the save and start a new meadow; settings stay. */
+export const onResetWorld = signal<() => void>(() => undefined);
+/** Put a share link for this world in the address bar and on the clipboard. */
+export const onShareLink = signal<() => void>(() => undefined);
+
 /**
  * Set by the app so the input can send a command without the interface
  * knowing anything about the world.
