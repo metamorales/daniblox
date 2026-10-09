@@ -391,16 +391,16 @@ The phone row is DevTools-style emulation on the laptop's own GPU, not a device,
 
 **Browser matrix.**
 
-| Browser                        | How                                       | Result                                                             |
-| ------------------------------ | ----------------------------------------- | ------------------------------------------------------------------ |
-| Chromium 156 (Playwright)      | every e2e run, SwiftShader                | pass                                                               |
-| Firefox (Playwright, headless) | `BROWSER_MATRIX=1`, boot spec             | pass                                                               |
-| WebKit (Playwright, headless)  | `BROWSER_MATRIX=1`, boot spec             | pass                                                               |
-| Chrome on this Mac             | by hand on the dev server, real GPU       | pass                                                               |
-| Safari on this Mac             | by hand on the dev server                 | pass                                                               |
-| Edge, Firefox on this Mac      | not installed                             | untested here; the Playwright engines above cover Gecko and WebKit |
-| iOS Safari, Android Chrome     | no device on hand                         | untested on device                                                 |
-| WebGL2 disabled                | Playwright `nowebgl` project on every run | fallback screen shown, Three.js never fetched                      |
+| Browser                        | How                                                                        | Result                                                             |
+| ------------------------------ | -------------------------------------------------------------------------- | ------------------------------------------------------------------ |
+| Chromium 156 (Playwright)      | every e2e run, SwiftShader                                                 | pass                                                               |
+| Firefox (Playwright, headless) | `BROWSER_MATRIX=1`, boot spec                                              | pass                                                               |
+| WebKit (Playwright, headless)  | `BROWSER_MATRIX=1`, boot spec                                              | pass                                                               |
+| Chromium on this Mac, real GPU | the Claude desktop browser pane, used by hand throughout M5 to M8          | pass                                                               |
+| Safari on this Mac             | opened on the dev server; screen capture is blocked here, so not inspected | owner to confirm                                                   |
+| Edge, Firefox on this Mac      | not installed                                                              | untested here; the Playwright engines above cover Gecko and WebKit |
+| iOS Safari, Android Chrome     | no device on hand                                                          | untested on device                                                 |
+| WebGL2 disabled                | Playwright `nowebgl` project on every run                                  | fallback screen shown, Three.js never fetched                      |
 
 **Hero GIF.** `tools/hero.mjs` records ten seconds in a headed Chromium and ffmpeg turns it into `docs/hero.gif`: 640 px wide, 8 fps, 96 colours, 84 frames, 10.5 s, 5.8 MB; `npm run check:gif` reads the GIF's own frame delays and passes.
 
@@ -428,7 +428,7 @@ The phone row is DevTools-style emulation on the laptop's own GPU, not a device,
 | Item | Status  | Evidence                                                                                                                                                                                                                              |
 | ---- | ------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | 1    | pass    | lint, 246 unit tests, build, 58 browser tests locally; CI runs the same and the smoke suite on the live URL                                                                                                                           |
-| 2    | partial | Chromium, Firefox and WebKit engines boot in Playwright; Chrome and Safari by hand on this Mac; no Edge or Firefox installed here; no iOS or Android device. Fallback screen covered on every run                                     |
+| 2    | partial | Chromium, Firefox and WebKit engines boot in Playwright; Chromium by hand on the real GPU; Safari opened but not inspected; no Edge or Firefox installed here; no iOS or Android device. Fallback screen covered on every run         |
 | 3    | partial | laptop numbers above pass every R6 line; phone is emulation, not a device; eight kits do not exist in a roster of one                                                                                                                 |
 | 4    | pass    | every action by typed command (command.spec), palette (palette.spec) and the block menu (palette.spec, world.spec); no clipping or teleport in soak.spec; unreachable handling in actions.test                                        |
 | 5    | pass    | R9 table above; parser cases well over twenty with more than five unparsable; one validator test per rejection rule                                                                                                                   |
