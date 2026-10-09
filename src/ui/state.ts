@@ -7,6 +7,7 @@
 
 import { signal } from '@preact/signals';
 import { DEFAULTS } from '../brain/llm';
+import type { PlayerAction } from './paletteItems';
 
 export interface ChatLine {
   readonly id: number;
@@ -94,3 +95,57 @@ export const brainStatus = signal<BrainStatusView | null>(null);
 
 export const onApplyModel = signal<(settings: ModelRequest) => void>(() => undefined);
 export const onForgetKey = signal<() => void>(() => undefined);
+
+// --- the palette, the block menu, and the player's own actions ---
+
+export const paletteOpen = signal(false);
+export const settingsOpen = signal(false);
+
+/** Things the player does directly rather than through Luciana. */
+export const onPlayerAction = signal<(action: PlayerAction) => void>(() => undefined);
+
+export interface BlockPickView {
+  readonly cell: { readonly x: number; readonly y: number; readonly z: number };
+  readonly normal: { readonly x: number; readonly y: number; readonly z: number };
+  readonly block: number;
+  readonly screen: { readonly x: number; readonly y: number };
+}
+
+export type MenuChoice = 'go' | 'mine' | 'place' | 'break-you' | 'place-you';
+
+/** The block the player just clicked, or null when no menu is open. */
+export const blockMenu = signal<BlockPickView | null>(null);
+export const onBlockMenuChoice = signal<(choice: MenuChoice, pick: BlockPickView) => void>(
+  () => undefined,
+);
+
+// --- preferences; applied by the app, saved from M7 on ---
+
+export type ThemeChoice = 'system' | 'light' | 'dark';
+export type MotionChoice = 'system' | 'reduced';
+export type DistanceChoice = 'auto' | 'near' | 'far';
+
+export interface Preferences {
+  readonly theme: ThemeChoice;
+  readonly motion: MotionChoice;
+  readonly renderDistance: DistanceChoice;
+}
+
+export const preferences = signal<Preferences>({
+  theme: 'system',
+  motion: 'system',
+  renderDistance: 'auto',
+});
+
+export function setPreference<K extends keyof Preferences>(key: K, value: Preferences[K]): void {
+  preferences.value = { ...preferences.value, [key]: value };
+}
+
+const THEME_ORDER: readonly ThemeChoice[] = ['system', 'light', 'dark'];
+
+export function cycleTheme(): ThemeChoice {
+  const at = THEME_ORDER.indexOf(preferences.value.theme);
+  const next = THEME_ORDER[(at + 1) % THEME_ORDER.length] ?? 'system';
+  setPreference('theme', next);
+  return next;
+}

@@ -12,7 +12,7 @@ import { Kit } from '../folk/kit';
 import { KitMesh } from './kitMesh';
 import { loadAtlas } from './atlas';
 import { ChunkMeshes } from './chunkMeshes';
-import { Interaction } from './interaction';
+import { Interaction, type BlockChange, type BlockPick } from './interaction';
 import { OrbitCamera } from './orbitCamera';
 import { Sky, skyAt } from './sky';
 import { VoxelMaterial } from './voxelMaterial';
@@ -27,6 +27,13 @@ export interface PerfSnapshot {
   pendingChunks: number;
 }
 
+export interface ViewEvents {
+  /** A click or long press on a block. The app decides what to offer. */
+  onPick?(pick: BlockPick): void;
+  /** The player changed a block by hand. */
+  onEdit?(change: BlockChange): void;
+}
+
 export interface WorldView {
   readonly world: World;
   readonly orbit: OrbitCamera;
@@ -39,6 +46,8 @@ export interface WorldView {
   sendTo(kitId: string, cell: { x: number; y: number; z: number }): void;
   /** The block under the pointer, which is what "this" means in a command. */
   pointedAt(): { x: number; y: number; z: number } | null;
+  /** The player's own edit, with the squash effect. False when nothing changed. */
+  editBlock(x: number, y: number, z: number, id: number): boolean;
   /** Frames drawn since start. The e2e suite reads this to prove the loop runs. */
   frames: number;
   render(dayPhase: number, frameMs: number, alpha?: number): void;
@@ -50,6 +59,7 @@ export async function createWorldView(
   canvas: HTMLCanvasElement,
   atlasUrl: string,
   seed: number,
+  events: ViewEvents = {},
 ): Promise<WorldView> {
   const renderer = new WebGLRenderer({ canvas, antialias: false });
   renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
@@ -88,9 +98,8 @@ export async function createWorldView(
   scene.add(effects);
 
   const interaction = new Interaction(canvas, world, orbit.camera, chunks.group, effects, {
-    onGoThere(cell) {
-      luciana.goTo(world, cell);
-    },
+    onPick: events.onPick,
+    onEdit: events.onEdit,
   });
   scene.add(interaction.reticle);
   scene.add(interaction.decal);
@@ -134,6 +143,10 @@ export async function createWorldView(
     pointedAt(): { x: number; y: number; z: number } | null {
       const target = interaction.target;
       return target ? { x: target.x, y: target.y, z: target.z } : null;
+    },
+
+    editBlock(x, y, z, id): boolean {
+      return interaction.setBlock(x, y, z, id);
     },
 
     render(dayPhase: number, frameMs: number, alpha = 1): void {

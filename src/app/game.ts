@@ -7,25 +7,33 @@
  * puts it on the screen.
  */
 
+import { effect } from '@preact/signals';
 import { LlmBrain, type LlmSettings } from '../brain/llm';
 import { ScriptedBrain } from '../brain/scripted';
 import type { ChatTurn } from '../brain/brain';
-import { validate } from '../brain/schema';
+import { validate, type Action } from '../brain/schema';
 import { ActionQueue, type ActionWorld } from '../folk/actions';
 import type { Kit } from '../folk/kit';
-import { blockById } from '../world/blocks';
-import type { Situation } from '../chat/dialogue';
+import { AIR, blockById, blockByName } from '../world/blocks';
+import { acknowledge, type Situation } from '../chat/dialogue';
 import type { WorldView } from '../render/scene';
 import {
   addLine,
   announce,
+  blockMenu,
   brainMode,
   brainStatus,
+  cycleTheme,
   kitStatus,
   modelSettings,
   onApplyModel,
+  onBlockMenuChoice,
   onCommand,
   onForgetKey,
+  onPlayerAction,
+  paletteOpen,
+  preferences,
+  settingsOpen,
   showToast,
   thinking,
 } from '../ui/state';
@@ -316,6 +324,106 @@ export function createGame(view: WorldView, loop: FixedLoop): Game {
   onCommand.value = send;
   for (const kit of view.kits) refreshStatus(kit);
 
+  /** An order that came from a click rather than from typing. */
+  function order(kit: Kit, kind: string, actions: Action[], seed: string): void {
+    const checked = validate({ say: acknowledge(kind, seed), actions });
+    if (!checked.ok) return;
+    const asked: Record<string, string> = {
+      goto: 'go here',
+      mine: 'mine this',
+      place: 'place a tile here',
+    };
+    const said = asked[kind] ?? kind;
+    addLine('player', said);
+    remember('player', said);
+    run(checked.value, kit);
+  }
+
+  /** The player's own edit. Refused, with a word, when Luciana is in the cell. */
+  function playerEdit(x: number, y: number, z: number, id: number): void {
+    const occupied = view.kits.some((kit) => {
+      const cell = kit.cell;
+      return cell.x === x && cell.z === z && (cell.y === y || cell.y + 1 === y);
+    });
+    if (occupied && id !== AIR) {
+      showToast('Luciana is standing there.');
+      return;
+    }
+    if (!view.editBlock(x, y, z, id)) showToast('Nothing changed there.');
+  }
+
+  const tileId = (): number => blockByName('tile')?.id ?? 7;
+
+  onBlockMenuChoice.value = (choice, pick) => {
+    const kit = view.kits[0];
+    if (!kit) return;
+    const { cell, normal } = pick;
+    const facing = { x: cell.x + normal.x, y: cell.y + normal.y, z: cell.z + normal.z };
+    const seed = `${String(cell.x)},${String(cell.y)},${String(cell.z)}`;
+    switch (choice) {
+      case 'go':
+        order(kit, 'goto', [{ type: 'goto', at: { x: cell.x, y: cell.y + 1, z: cell.z } }], seed);
+        break;
+      case 'mine':
+        order(kit, 'mine', [{ type: 'mine', at: { ...cell } }], seed);
+        break;
+      case 'place':
+        order(kit, 'place', [{ type: 'place', block: tileId(), at: facing }], seed);
+        break;
+      case 'break-you':
+        playerEdit(cell.x, cell.y, cell.z, AIR);
+        break;
+      case 'place-you':
+        playerEdit(facing.x, facing.y, facing.z, tileId());
+        break;
+    }
+  };
+
+  onPlayerAction.value = (action) => {
+    const kit = view.kits[0];
+    const reticle = view.orbit.targetCell();
+    const ground = view.world.surfaceHeight(reticle.x, reticle.z);
+    switch (action) {
+      case 'break-here':
+        if (ground >= 0) playerEdit(reticle.x, ground, reticle.z, AIR);
+        break;
+      case 'place-here':
+        playerEdit(reticle.x, ground + 1, reticle.z, tileId());
+        break;
+      case 'focus-kit':
+        if (kit) view.orbit.setTarget(kit.position.x, kit.position.y, kit.position.z);
+        break;
+      case 'open-settings':
+        settingsOpen.value = true;
+        break;
+      case 'cycle-theme':
+        showToast(`Theme: ${cycleTheme()}.`);
+        break;
+    }
+  };
+
+  // Keys that work anywhere outside a text box.
+  const onKeyDown = (event: KeyboardEvent): void => {
+    const target = event.target;
+    if (target instanceof HTMLElement && target.matches('input, textarea, [contenteditable]')) {
+      return;
+    }
+    if (paletteOpen.value || blockMenu.value) return;
+    if (event.key === 'f' || event.key === 'F') {
+      if (event.ctrlKey || event.metaKey || event.altKey) return;
+      event.preventDefault();
+      onPlayerAction.value('focus-kit');
+    }
+  };
+  window.addEventListener('keydown', onKeyDown);
+
+  // The theme is a document attribute the tokens file already understands.
+  const stopTheme = effect(() => {
+    const { theme } = preferences.value;
+    if (theme === 'system') delete document.documentElement.dataset.theme;
+    else document.documentElement.dataset.theme = theme;
+  });
+
   let sinceStatus = 0;
 
   return {
@@ -331,6 +439,10 @@ export function createGame(view: WorldView, loop: FixedLoop): Game {
     send,
     dispose(): void {
       onCommand.value = () => undefined;
+      onBlockMenuChoice.value = () => undefined;
+      onPlayerAction.value = () => undefined;
+      window.removeEventListener('keydown', onKeyDown);
+      stopTheme();
       queues.clear();
     },
   };

@@ -1,6 +1,7 @@
 import { render } from 'preact';
 import { createWorldView, type WorldView } from '../render/scene';
 import { Shell } from '../ui/Shell';
+import { blockMenu } from '../ui/state';
 import { createGame } from './game';
 import { FixedLoop } from './loop';
 
@@ -47,7 +48,11 @@ export async function start(): Promise<void> {
   root.appendChild(overlay);
   render(<Shell />, overlay);
 
-  const view = await createWorldView(canvas, ATLAS_URL, pickSeed());
+  const view = await createWorldView(canvas, ATLAS_URL, pickSeed(), {
+    onPick: (pick) => {
+      blockMenu.value = pick;
+    },
+  });
   window.__app = view;
   window.__perf = view.perf;
 

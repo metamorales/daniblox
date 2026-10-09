@@ -32,12 +32,33 @@ export interface HoveredBlock {
   readonly normal: Vector3;
 }
 
+export interface BlockChange {
+  readonly x: number;
+  readonly y: number;
+  readonly z: number;
+  readonly from: number;
+  readonly to: number;
+}
+
+/** A block the player clicked or pressed, offered to the app for a menu. */
+export interface BlockPick {
+  readonly cell: { readonly x: number; readonly y: number; readonly z: number };
+  readonly normal: { readonly x: number; readonly y: number; readonly z: number };
+  readonly block: number;
+  /** Where on the page it happened, so a menu can sit beside the pointer. */
+  readonly screen: { readonly x: number; readonly y: number };
+}
+
 export interface InteractionEvents {
   /** Fired after the player changes a block, so the caller can save or announce. */
-  onEdit?(change: { x: number; y: number; z: number; from: number; to: number }): void;
-  /** Fired when the player points somewhere and asks for a kit to go there. */
-  onGoThere?(cell: { x: number; y: number; z: number }): void;
+  onEdit?(change: BlockChange): void;
+  /** Fired on a click or a long press over a block. */
+  onPick?(pick: BlockPick): void;
 }
+
+const LONG_PRESS_MS = 550;
+/** Movement past this is a drag, which belongs to the camera. */
+const DRAG_PX = 6;
 
 const DASH_SPEED = 1.6;
 
@@ -131,6 +152,22 @@ export class Interaction {
   /** Put the ground reticle on a cell, which is what "here" will mean. */
   placeReticle(x: number, z: number, y: number): void {
     this.reticle.position.set(x + 0.5, y + 1.002, z + 0.5);
+  }
+
+  /**
+   * The player's own edit at a cell, with the squash effect. Returns false
+   * when nothing changed, which is also what callers get for a cell outside
+   * the world.
+   */
+  setBlock(x: number, y: number, z: number, id: number): boolean {
+    const from = this.world.get(x, y, z);
+    if (from === id) return false;
+    if (!this.world.set(x, y, z, id)) return false;
+
+    if (id === AIR) this.spawnEffect(x, y, z, blockById(from)?.colour ?? '#fdf3e2', false);
+    else this.spawnEffect(x, y, z, '#fdf3e2', true);
+    this.events.onEdit?.({ x, y, z, from, to: id });
+    return true;
   }
 
   update(frameMs: number): void {
@@ -230,13 +267,7 @@ export class Interaction {
   private break(): void {
     const target = this.hovered;
     if (!target) return;
-    const from = this.world.get(target.x, target.y, target.z);
-    if (from === AIR) return;
-    if (!this.world.set(target.x, target.y, target.z, AIR)) return;
-
-    const colour = blockById(from)?.colour ?? '#fdf3e2';
-    this.spawnEffect(target.x, target.y, target.z, colour, false);
-    this.events.onEdit?.({ x: target.x, y: target.y, z: target.z, from, to: AIR });
+    this.setBlock(target.x, target.y, target.z, AIR);
   }
 
   private place(id: number): void {
@@ -246,41 +277,82 @@ export class Interaction {
     const y = target.y + target.normal.y;
     const z = target.z + target.normal.z;
     if (this.world.get(x, y, z) !== AIR) return;
-    if (!this.world.set(x, y, z, id)) return;
-
-    this.spawnEffect(x, y, z, '#fdf3e2', true);
-    this.events.onEdit?.({ x, y, z, from: AIR, to: id });
+    this.setBlock(x, y, z, id);
   }
 
-  private goThere(): void {
+  /** Hand the hovered block to the app, which decides what to offer. */
+  private offer(screenX: number, screenY: number): void {
     const target = this.hovered;
     if (!target) return;
-    // Stand on top of whatever was pointed at.
-    this.events.onGoThere?.({ x: target.x, y: target.y + 1, z: target.z });
+    this.events.onPick?.({
+      cell: { x: target.x, y: target.y, z: target.z },
+      normal: { x: target.normal.x, y: target.normal.y, z: target.normal.z },
+      block: this.world.get(target.x, target.y, target.z),
+      screen: { x: screenX, y: screenY },
+    });
   }
 
   private bind(): void {
-    const onMove = (event: PointerEvent): void => {
+    let pressTimer: ReturnType<typeof setTimeout> | undefined;
+    let pressedAt: { x: number; y: number } | null = null;
+    // Set when a long press already opened the menu, so the release does not.
+    let consumed = false;
+
+    const track = (event: PointerEvent): void => {
       const rect = this.canvas.getBoundingClientRect();
       this.pointer.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
       this.pointer.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
       this.pointerInside = true;
-      if (event.buttons !== 0) this.dragged++;
     };
-    const onDown = (): void => {
+    const cancelPress = (): void => {
+      if (pressTimer) clearTimeout(pressTimer);
+      pressTimer = undefined;
+    };
+
+    const onMove = (event: PointerEvent): void => {
+      track(event);
+      if (event.buttons !== 0) this.dragged++;
+      if (
+        pressedAt &&
+        Math.hypot(event.clientX - pressedAt.x, event.clientY - pressedAt.y) > DRAG_PX
+      ) {
+        cancelPress();
+      }
+    };
+    const onDown = (event: PointerEvent): void => {
       this.dragged = 0;
+      consumed = false;
+      pressedAt = { x: event.clientX, y: event.clientY };
+      // A finger gives no hover first, so the pick happens on the press.
+      track(event);
+      this.pick();
+      cancelPress();
+      if (event.button !== 0) return;
+      // A long press is the touch equivalent of a click, and harmless with a
+      // mouse: it only fires when the pointer has not moved.
+      const { clientX, clientY } = event;
+      pressTimer = setTimeout(() => {
+        pressTimer = undefined;
+        if (this.dragged > 3) return;
+        consumed = true;
+        this.offer(clientX, clientY);
+      }, LONG_PRESS_MS);
     };
     const onLeave = (): void => {
       this.pointerInside = false;
+      cancelPress();
     };
     const onUp = (event: PointerEvent): void => {
+      cancelPress();
+      pressedAt = null;
+      if (consumed) return;
       // A drag was a camera move, not a click on a block.
       if (this.dragged > 3 || event.button !== 0) return;
-      // Alt sends Luciana to the spot, shift stacks a block onto the face,
-      // and a plain click takes one away. M3 replaces this with a menu.
-      if (event.altKey) this.goThere();
-      else if (event.shiftKey) this.place(blockByName('tile')?.id ?? 7);
-      else this.break();
+      // Shift stacks a tile onto the face and Alt takes the block away, as
+      // quick hands for the player's own edits. A plain click offers the menu.
+      if (event.shiftKey) this.place(blockByName('tile')?.id ?? 7);
+      else if (event.altKey) this.break();
+      else this.offer(event.clientX, event.clientY);
     };
 
     this.canvas.addEventListener('pointermove', onMove);

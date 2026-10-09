@@ -1,8 +1,10 @@
+import { BlockMenu } from './BlockMenu';
+import { Palette } from './Palette';
 import { Settings } from './Settings';
 import { Sidebar } from './Sidebar';
 import styles from './Shell.module.css';
 import { Wordmark } from './Wordmark';
-import { announcement, toast } from './state';
+import { announcement, paletteOpen, toast } from './state';
 
 /**
  * The overlay above the canvas: the wordmark, Luciana's panel, a toast, and a
@@ -14,6 +16,17 @@ export function Shell() {
     <div class={styles.overlay}>
       <header class={styles.header}>
         <Wordmark size={20} />
+        <button
+          type="button"
+          class={styles.paletteButton}
+          aria-keyshortcuts="Control+K Meta+K"
+          onClick={() => {
+            paletteOpen.value = true;
+          }}
+        >
+          Commands
+          <kbd class={styles.kbd}>⌘K</kbd>
+        </button>
       </header>
 
       <div class={styles.panel}>
@@ -30,6 +43,9 @@ export function Shell() {
       <p class="visually-hidden" aria-live="polite">
         {announcement.value}
       </p>
+
+      <Palette />
+      <BlockMenu />
     </div>
   );
 }

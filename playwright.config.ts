@@ -25,7 +25,7 @@ export default defineConfig({
   projects: [
     {
       name: 'webgl',
-      testMatch: /(boot|world|command|model)\.spec\.ts/,
+      testMatch: /(boot|world|command|model|palette|settings|onboarding|mobile)\.spec\.ts/,
       use: {
         ...devices['Desktop Chrome'],
         launchOptions: {

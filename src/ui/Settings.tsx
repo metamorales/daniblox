@@ -1,7 +1,14 @@
 import { useState } from 'preact/hooks';
 import { DEFAULTS } from '../brain/llm';
 import styles from './Settings.module.css';
-import { brainMode, brainStatus, modelSettings, onApplyModel, onForgetKey } from './state';
+import {
+  brainMode,
+  brainStatus,
+  modelSettings,
+  onApplyModel,
+  onForgetKey,
+  settingsOpen,
+} from './state';
 
 /**
  * Where a model gets plugged in. Everything here is optional: with nothing
@@ -19,7 +26,13 @@ export function Settings() {
   const usingModel = brainMode.value === 'model';
 
   return (
-    <details class={styles.panel}>
+    <details
+      class={styles.panel}
+      open={settingsOpen.value}
+      onToggle={(event) => {
+        settingsOpen.value = (event.currentTarget as HTMLDetailsElement).open;
+      }}
+    >
       <summary class={styles.summary}>
         Settings
         <span class={`${styles.badge} ${usingModel ? styles.badgeModel : ''}`}>

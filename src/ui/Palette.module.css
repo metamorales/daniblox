@@ -1,0 +1,83 @@
+.backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 20;
+  pointer-events: auto;
+  display: grid;
+  align-content: start;
+  justify-content: center;
+  padding: 10vh 16px 16px;
+  background: color-mix(in srgb, var(--plum) 45%, transparent);
+}
+
+.dialog {
+  width: min(34rem, 100%);
+  max-height: 80vh;
+  display: flex;
+  flex-direction: column;
+  border: 3px solid var(--ink);
+  background: var(--surface);
+  color: var(--text);
+  box-shadow: 6px 6px 0 var(--ink);
+}
+
+.input {
+  min-height: 48px;
+  padding: 8px 12px;
+  border: 0;
+  border-bottom: 3px solid var(--border);
+  background: var(--bg);
+  color: var(--text);
+  font: inherit;
+  font-size: 16px;
+}
+
+.input:focus-visible {
+  outline-offset: -3px;
+}
+
+.list {
+  flex: 1;
+  overflow-y: auto;
+  margin: 0;
+  padding: 6px 0;
+  list-style: none;
+}
+
+.item {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  min-height: 44px;
+  padding: 10px 12px;
+  cursor: pointer;
+  font-size: 15px;
+}
+
+.item:hover {
+  background: var(--bg);
+}
+
+.active {
+  background: var(--accent);
+  color: var(--on-accent);
+}
+
+.active .hint {
+  color: var(--on-accent);
+}
+
+.hint {
+  flex-shrink: 0;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.foot {
+  margin: 0;
+  padding: 6px 12px;
+  border-top: 3px solid var(--border);
+  color: var(--muted);
+  font-size: 13px;
+}

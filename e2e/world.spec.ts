@@ -95,7 +95,7 @@ test.describe('the world', () => {
     expect(after, 'a camera drag edited the world').toBe(before);
   });
 
-  test('breaks a block on click and places one on shift-click', async ({ page }) => {
+  test('breaks a block from the click menu and places one on shift-click', async ({ page }) => {
     const solidCount = async (): Promise<number> =>
       page.evaluate(() => {
         let n = 0;
@@ -107,9 +107,10 @@ test.describe('the world', () => {
     await page.mouse.move(640, 430);
     await page.waitForTimeout(200);
     await page.mouse.click(640, 430);
+    await page.getByRole('menuitem', { name: 'Break it yourself' }).click();
     await page.waitForTimeout(250);
     const broken = await solidCount();
-    expect(broken, 'the click did not remove a block').toBeLessThan(start);
+    expect(broken, 'the menu did not remove a block').toBeLessThan(start);
 
     await page.mouse.move(700, 450);
     await page.waitForTimeout(200);
