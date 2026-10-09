@@ -15,6 +15,7 @@ import { validate, type Action } from '../brain/schema';
 import { ActionQueue, type ActionWorld } from '../folk/actions';
 import type { Kit } from '../folk/kit';
 import { AIR, blockById, blockByName } from '../world/blocks';
+import { AmbientChatter } from '../chat/ambient';
 import { acknowledge, type Situation } from '../chat/dialogue';
 import type { WorldView } from '../render/scene';
 import {
@@ -53,7 +54,7 @@ import type { Session } from './session';
 import { applyEdits, encodeShare } from './share';
 import { blockById as lookupBlock } from '../world/blocks';
 import type { PromptSituation } from '../brain/prompt';
-import type { FixedLoop } from './loop';
+import { TICK_MS, type FixedLoop } from './loop';
 
 /** How many turns of back-and-forth the model brain will be shown in M5. */
 const HISTORY_LENGTH = 6;
@@ -114,6 +115,8 @@ function voice(note: string, detail: Record<string, unknown> | undefined): strin
       return 'Scattered about.';
     case 'cleared':
       return 'All tidy.';
+    case 'lifted':
+      return 'Up we go.';
     case 'time-changed':
       return `There you go: ${String(detail?.phase ?? 'a new hour')}.`;
     case 'nothing-happened':
@@ -461,6 +464,7 @@ export function createGame(view: WorldView, loop: FixedLoop, session: Session): 
 
     addLine('player', trimmed);
     remember('player', trimmed);
+    ambient.noteSpeech(loop.ticks * TICK_MS);
     thinking.value = true;
 
     const payload = {
@@ -629,6 +633,38 @@ export function createGame(view: WorldView, loop: FixedLoop, session: Session): 
   let sinceReadout = 0;
   let nodesSeen = 0;
 
+  // Idle remarks: scripted unless the player lets the model do them.
+  const ambient = new AmbientChatter();
+  function muse(kit: Kit): void {
+    const now = loop.ticks * TICK_MS;
+    ambient.noteSpeech(now);
+    if (preferences.value.ambientModel && model) {
+      void model
+        .respond({
+          text: 'You have been standing about for a while. Say one short thing to yourself about what is around you, and do nothing.',
+          source: 'folk',
+          folk: kit,
+          world: {
+            reticle: view.orbit.targetCell(),
+            focus: view.pointedAt(),
+            dayPhase: loop.dayPhase,
+            kitNames: view.kits.map((k) => k.name),
+          },
+          history: [...history],
+          situation: promptSituation(kit),
+        })
+        .then((output) => {
+          const checked = validate(output);
+          if (checked.ok) run({ say: checked.value.say, actions: [] }, kit);
+        })
+        .catch(() => undefined);
+      return;
+    }
+    const line = scripted.idle(situationOf(kit), String(loop.ticks));
+    addLine('kit', line);
+    remember('kit', line);
+  }
+
   // The welcome: first visit only, skippable, and back on request.
   onOnboardingDone.value = markWelcomeSeen;
   onReplayOnboarding.value = () => {
@@ -648,6 +684,9 @@ export function createGame(view: WorldView, loop: FixedLoop, session: Session): 
         const kit = view.kits[0];
         if (kit) refreshStatus(kit);
       }
+      const first = view.kits[0];
+      const idle = first ? (queues.get(first.id)?.idle ?? true) && first.state === 'idle' : false;
+      if (first && ambient.tick(idle, loop.ticks * TICK_MS)) muse(first);
       // A guest world becomes the player's own the moment they change it, and
       // the link comes off the address bar so a reload opens the save.
       if (sharedUntilEdit && view.world.revision !== revisionAtLoad) {

@@ -139,12 +139,15 @@ export interface Preferences {
   readonly theme: ThemeChoice;
   readonly motion: MotionChoice;
   readonly renderDistance: DistanceChoice;
+  /** Spec R3: idle remarks come from the templates unless this is on. */
+  readonly ambientModel: boolean;
 }
 
 export const preferences = signal<Preferences>({
   theme: 'system',
   motion: 'system',
   renderDistance: 'auto',
+  ambientModel: false,
 });
 
 export function setPreference<K extends keyof Preferences>(key: K, value: Preferences[K]): void {

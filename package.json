@@ -20,11 +20,11 @@
     "size": "node tools/bundle-size.mjs",
     "check:words": "node tools/check-words.mjs",
     "check:readmes": "node tools/check-readmes.mjs",
-    "check:boundary": "node tools/check-boundary.mjs"
+    "check:boundary": "node tools/check-boundary.mjs",
+    "check:gif": "node tools/check-gif.mjs docs/hero.gif"
   },
   "dependencies": {
     "@preact/signals": "^2.0.1",
-    "idb-keyval": "^6.2.1",
     "preact": "^10.26.4",
     "simplex-noise": "^4.0.3",
     "three": "^0.180.0",

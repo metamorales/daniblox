@@ -26,7 +26,7 @@ export default defineConfig({
     {
       name: 'webgl',
       testMatch:
-        /(boot|world|command|model|palette|settings|onboarding|mobile|access|save)\.spec\.ts/,
+        /(boot|world|command|model|palette|settings|onboarding|mobile|access|save|soak)\.spec\.ts/,
       use: {
         ...devices['Desktop Chrome'],
         launchOptions: {
@@ -46,5 +46,21 @@ export default defineConfig({
         launchOptions: { args: ['--disable-webgl', '--disable-webgl2'] },
       },
     },
+    // The browser matrix (plan M8): boot in Firefox and WebKit too. Only
+    // when asked for, since CI installs Chromium alone.
+    ...(process.env.BROWSER_MATRIX
+      ? [
+          {
+            name: 'firefox',
+            testMatch: /boot\.spec\.ts/,
+            use: { ...devices['Desktop Firefox'] },
+          },
+          {
+            name: 'webkit',
+            testMatch: /boot\.spec\.ts/,
+            use: { ...devices['Desktop Safari'] },
+          },
+        ]
+      : []),
   ],
 });

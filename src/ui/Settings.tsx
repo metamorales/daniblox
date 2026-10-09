@@ -183,6 +183,18 @@ export function Settings() {
           disk, never written into a shared link, and never logged.
         </p>
 
+        <label class={styles.check}>
+          <input
+            id="pref-ambient"
+            type="checkbox"
+            checked={prefs.ambientModel}
+            onChange={(event) => {
+              setPreference('ambientModel', (event.currentTarget as HTMLInputElement).checked);
+            }}
+          />
+          Let the model do her idle remarks too
+        </label>
+
         {status?.error && <p class={styles.error}>{status.error}</p>}
 
         <div class={styles.row}>

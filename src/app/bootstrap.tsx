@@ -5,6 +5,7 @@ import { blockMenu } from '../ui/state';
 import { createGame } from './game';
 import { FixedLoop } from './loop';
 import { openSession } from './session';
+import { startBench } from './bench';
 
 declare global {
   interface Window {
@@ -70,4 +71,18 @@ export async function start(): Promise<void> {
   window.__loop = loop;
   loop.bindVisibility();
   loop.run();
+
+  // Time to interactive, as the spec's proxy: the first frame has been
+  // drawn and the command box can take input.
+  requestAnimationFrame(() => {
+    requestAnimationFrame(() => {
+      performance.mark('interactive');
+    });
+  });
+
+  const query = new URLSearchParams(window.location.search);
+  if (query.get('bench') === '1') {
+    const seconds = Number(query.get('seconds') ?? 60);
+    startBench(view, game, Number.isFinite(seconds) && seconds > 0 ? seconds : 60);
+  }
 }

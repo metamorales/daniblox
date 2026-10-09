@@ -491,6 +491,31 @@ export class ActionQueue {
   // --- world-scale powers ---
 
   private runPower(action: Action): boolean {
+    const done = this.applyPower(action);
+    this.unbury();
+    return done;
+  }
+
+  /**
+   * A power can raise ground or grow a tree straight through a kit. Nobody
+   * should be left inside a block, so anyone buried is stood on the new
+   * surface of their own column.
+   */
+  private unbury(): void {
+    const world = this.context.world;
+    for (const kit of this.context.kits) {
+      const cell = kit.cell;
+      const buried =
+        isSolid(world.get(cell.x, cell.y, cell.z)) ||
+        isSolid(world.get(cell.x, cell.y + 1, cell.z));
+      if (!buried) continue;
+      const top = world.surfaceHeight(cell.x, cell.z);
+      kit.teleport({ x: cell.x, y: top + 1, z: cell.z });
+      this.context.report(kit, 'lifted');
+    }
+  }
+
+  private applyPower(action: Action): boolean {
     const { world, seed } = this.context;
     const kit = this.kit;
     kit.activity = 'reshaping';

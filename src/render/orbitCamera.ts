@@ -104,6 +104,15 @@ export class OrbitCamera {
     };
   }
 
+  /** Turn the view a little, as a drag would. Used by the bench and the soak. */
+  nudge(yaw: number, pitch: number): void {
+    this.desiredYaw += yaw;
+    this.desiredPitch = Math.min(
+      this.limits.maxPitch,
+      Math.max(this.limits.minPitch, this.desiredPitch + pitch),
+    );
+  }
+
   setReducedMotion(force: boolean): void {
     this.forcedReducedMotion = force;
   }

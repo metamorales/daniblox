@@ -29,7 +29,7 @@ function sample(): SaveFile {
       { who: 'kit', text: 'Hello. What are we doing?' },
     ],
     settings: {
-      preferences: { theme: 'dark', motion: 'system', renderDistance: 'near' },
+      preferences: { theme: 'dark', motion: 'system', renderDistance: 'near', ambientModel: false },
       model: {
         provider: 'openai',
         baseUrl: 'http://localhost:11434/v1',

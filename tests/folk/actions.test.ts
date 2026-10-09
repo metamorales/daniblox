@@ -349,6 +349,26 @@ describe('world-scale powers', () => {
     expect(h.dayPhase).toBeLessThan(0.2);
   });
 
+  it('never leaves her inside the ground it raised', () => {
+    const h = harness();
+    const before = h.kit.cell;
+    h.queue.push([
+      {
+        type: 'sculpt',
+        shape: 'raise',
+        at: { x: before.x, y: before.y, z: before.z },
+        radius: 4,
+        amount: 5,
+      },
+    ]);
+    h.run(5);
+    const after = h.kit.cell;
+    expect(h.world.get(after.x, after.y, after.z)).toBe(AIR);
+    expect(h.world.get(after.x, after.y + 1, after.z)).toBe(AIR);
+    expect(after.y).toBeGreaterThan(before.y);
+    expect(notes(h)).toContain('lifted');
+  });
+
   it('raises the ground where it was asked to', () => {
     const h = harness();
     const before = (() => {

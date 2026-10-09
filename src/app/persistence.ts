@@ -43,6 +43,7 @@ const SettingsSave = z
         theme: z.enum(['system', 'light', 'dark']),
         motion: z.enum(['system', 'reduced']),
         renderDistance: z.enum(['auto', 'near', 'far']),
+        ambientModel: z.boolean().default(false),
       })
       .strict(),
     model: z
@@ -74,7 +75,7 @@ export type KitSave = z.infer<typeof KitSave>;
 export type SettingsSave = z.infer<typeof SettingsSave>;
 
 export const DEFAULT_SETTINGS: SettingsSave = {
-  preferences: { theme: 'system', motion: 'system', renderDistance: 'auto' },
+  preferences: { theme: 'system', motion: 'system', renderDistance: 'auto', ambientModel: false },
   model: { provider: 'openai', baseUrl: '', model: '', remember: false, active: false },
 };
 

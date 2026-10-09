@@ -125,7 +125,12 @@ test.describe('share links', () => {
     await expect(page.getByRole('status')).toContainText(/shared world/i);
     expect(await page.evaluate(() => window.__app?.world.seed ?? 0)).toBe(5);
     await page.waitForTimeout(2600);
-    expect(await saved(page), 'the save changed before any edit').toBe(before);
+    // Luciana may muse to herself meanwhile, which is allowed to reach the
+    // old save; what must not change is which world the save holds.
+    expect(before).toContain('"seed":20260409');
+    expect(await saved(page), 'the save changed world before any edit').toContain(
+      '"seed":20260409',
+    );
 
     const mine = await placeMarker(page);
     await expect.poll(() => saved(page), { timeout: 6000 }).not.toBe(before);

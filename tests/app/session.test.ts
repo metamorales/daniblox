@@ -32,7 +32,12 @@ function saveFor(seed: number): string {
     kits: [],
     chat: [],
     settings: {
-      preferences: { theme: 'system', motion: 'system', renderDistance: 'auto' },
+      preferences: {
+        theme: 'system',
+        motion: 'system',
+        renderDistance: 'auto',
+        ambientModel: false,
+      },
       model: { provider: 'openai', baseUrl: '', model: '', remember: false, active: false },
     },
   };
