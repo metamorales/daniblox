@@ -87,9 +87,9 @@ Conventions: "Test:" is automated and runs in CI. "Measure:" is recorded in §5 
 ### M4 — the kit's character and chat
 
 - **One** hand-written personality card: name, two-line bio, mood, three quirks, two catchphrases. Tested against a schema.
-- Template grammar seeded by the card: replies of at most two sentences and 240 characters, grounded in what the kit is doing, where it is, what it carries and the time of day. Tests cover each action across four times of day and both an empty and a full inventory, and assert the card's voice shows up in at least half of 200 seeded samples.
+- Template grammar seeded by the card: two sentences when acknowledging an order, up to about five when talking, grounded in what she is doing, where she is, what she carries and the time of day. Tests cover each action across four times of day and both an empty and a full inventory, and assert the card's voice shows up in at least half of 200 seeded samples.
 - Clicking the kit opens a speech bubble; the sidebar keeps the last 50 lines.
-- Content filter: a blocklist over every spoken line plus in-character deflections for off-limits topics. At least one test.
+- No content filter. The owner removed the all-ages rule on 2026-10-09; see decisions.md M4-0. Her written lines are clean because they are written, and nothing is layered over a model the player supplies.
 - The `aria-live` region announces chat as well as actions.
 - Ambient chatter is **cut**: with one character there is nobody to chat to. Recorded as a spec amendment; the scheduler is not built.
 

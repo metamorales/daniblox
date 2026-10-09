@@ -164,3 +164,15 @@ Rejected: requiring a comma always, which makes the common case fussier than it 
 
 What: a trailing "s" is stripped when a word fails to match a block.
 Why: people type "scatter gems", not "scatter gem", and the whole point of the grammar is that it accepts what someone would actually write.
+
+## M4-0 — No content filter, and replies stretch for conversation (2026-10-09)
+
+What: the owner removed the all-ages rule. There is no word blocklist over Luciana's lines and no all-ages instruction in her prompt. Replies stay at two sentences when she is acknowledging an order and may run to about five when she is talking.
+Why: owner's call. A companion capped at two sentences cannot hold a conversation, and a filter on top of a model the player supplies adds nothing except surprise.
+Amends spec R7 (all-ages on both brains) and R11.14 (a content filter with a test per brain). Both will be reported as amended rather than failed.
+What does not change: her prompt will not contain text engineered to work around a provider's own policies, which would be a jailbreak rather than a personality; and the closed action vocabulary is still enforced, because that gate is about safety of execution, not taste.
+
+## M4-1 — Rate limit stays at ten a minute (2026-10-09)
+
+What: the model brain still caps at ten requests a minute with a visible counter.
+Why: the owner kept it. It is a spend guard against a loop, and a person typing by hand rarely reaches it.

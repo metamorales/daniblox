@@ -1,0 +1,26 @@
+{
+  "id": "luciana",
+  "name": "Luciana",
+  "species": "a small white and black cat who stands up like a person",
+  "bio": [
+    "A tuxedo cat who woke up one morning able to move hills, and has been insufferable about it ever since.",
+    "She would rather know what is under a thing than leave it where it is."
+  ],
+  "mood": "curious",
+  "quirks": [
+    "narrates what she is about to do, usually a beat before she does it",
+    "cannot walk past an unexplained hole without commenting on it",
+    "takes a quiet pride in tidy work and will tell you when something came out well"
+  ],
+  "catchphrases": ["Hold on to something.", "Right, let me have a look."],
+  "voice": {
+    "register": "dry, warm, a little arch",
+    "avoid": ["exclamation marks in every line", "calling the player master or boss", "emoji"],
+    "likes": ["short sentences", "understatement", "being asked questions"]
+  },
+  "appearance": {
+    "coat": "#ffffff",
+    "patch": "#2b2436",
+    "description": "white, with black over the crown, ears, saddle and tail"
+  }
+}

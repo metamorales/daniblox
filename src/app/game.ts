@@ -13,6 +13,7 @@ import { validate } from '../brain/schema';
 import { ActionQueue, type ActionWorld } from '../folk/actions';
 import type { Kit } from '../folk/kit';
 import { blockById } from '../world/blocks';
+import type { Situation } from '../chat/dialogue';
 import type { WorldView } from '../render/scene';
 import { addLine, announce, kitStatus, onCommand, showToast, thinking } from '../ui/state';
 import type { FixedLoop } from './loop';
@@ -130,6 +131,20 @@ export function createGame(view: WorldView, loop: FixedLoop): Game {
     kitStatus.value = { name: kit.name, activity: kit.activity, carrying };
   }
 
+  function situationOf(kit: Kit): Situation {
+    const cell = kit.cell;
+    const under = view.world.get(cell.x, cell.y - 1, cell.z);
+    return {
+      activity: kit.activity,
+      cell,
+      standingOn: blockById(under)?.label ?? null,
+      carrying: [...kit.inventory.entries()]
+        .map(([id, count]) => ({ label: blockById(id)?.label ?? 'something', count }))
+        .sort((a, b) => b.count - a.count),
+      dayPhase: loop.dayPhase,
+    };
+  }
+
   function send(text: string): void {
     const trimmed = text.trim();
     if (!trimmed) return;
@@ -151,6 +166,7 @@ export function createGame(view: WorldView, loop: FixedLoop): Game {
         kitNames: view.kits.map((k) => k.name),
       },
       history,
+      situation: situationOf(kit),
     });
 
     // Everything a brain says goes through the schema, including this one.
