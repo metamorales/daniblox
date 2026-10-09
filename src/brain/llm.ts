@@ -25,6 +25,26 @@ export const BREAKER_COOLDOWN_MS = 60_000;
 
 export type Provider = 'openai' | 'anthropic';
 
+/**
+ * Optional fields on an OpenAI-compatible request. Both help when honoured
+ * and each is refused by some servers: a quantised local model may not
+ * support structured output, and a hosted model that does not reason may
+ * reject the effort field. A model that reasons by default would otherwise
+ * spend the whole reply budget on hidden thinking and send back nothing.
+ *
+ * They are dropped one at a time, in this order, because a server that
+ * refuses one may well want the other.
+ */
+export const REQUEST_EXTRAS = {
+  response_format: { type: 'json_object' },
+  reasoning_effort: 'none',
+} as const;
+type ExtraKey = keyof typeof REQUEST_EXTRAS;
+const EXTRA_KEYS = Object.keys(REQUEST_EXTRAS) as ExtraKey[];
+
+/** Status codes that mean "I do not understand that field", not "I failed". */
+const REFUSED_FIELD = new Set([400, 422, 501]);
+
 export interface LlmSettings {
   readonly provider: Provider;
   /** Editable, so a local server or a gateway works as well as a hosted one. */
@@ -62,7 +82,7 @@ export interface LlmEvents {
 
 /** Sensible starting points. A local server needs no key and costs nothing. */
 export const DEFAULTS: Record<Provider, { baseUrl: string; model: string }> = {
-  openai: { baseUrl: 'http://localhost:11434/v1', model: 'qwen2.5:7b' },
+  openai: { baseUrl: 'http://localhost:11434/v1', model: 'qwen3.5:9b' },
   anthropic: { baseUrl: 'https://api.anthropic.com', model: 'claude-haiku-4-5-20251001' },
 };
 
@@ -90,6 +110,8 @@ export class LlmBrain implements Brain {
   private readonly limiter: RateLimiter;
   private consecutiveFailures = 0;
   private breakerUntil = 0;
+  /** Optional fields the server has refused, so they are not sent again. */
+  private readonly refused = new Set<ExtraKey>();
   private lastStatus: BrainStatus;
 
   constructor(
@@ -112,6 +134,7 @@ export class LlmBrain implements Brain {
     // New settings deserve a fresh try.
     this.consecutiveFailures = 0;
     this.breakerUntil = 0;
+    this.refused.clear();
   }
 
   async respond(request: BrainRequest & { situation?: PromptSituation }): Promise<BrainOutput> {
@@ -179,25 +202,35 @@ export class LlmBrain implements Brain {
     const headers: Record<string, string> = { 'Content-Type': 'application/json' };
     if (this.settings.apiKey) headers.Authorization = `Bearer ${this.settings.apiKey}`;
 
-    const response = await fetch(`${trimSlash(this.settings.baseUrl)}/chat/completions`, {
-      method: 'POST',
-      headers,
-      signal,
-      body: JSON.stringify({
-        model: this.settings.model,
-        temperature: TEMPERATURE,
-        max_tokens: MAX_TOKENS,
-        response_format: { type: 'json_object' },
-        messages: [
-          { role: 'system', content: system },
-          ...turns.map((turn) => ({
-            role: turn.who === 'kit' ? 'assistant' : 'user',
-            content: turn.text,
-          })),
-          { role: 'user', content: userMessage },
-        ],
-      }),
-    });
+    const post = () =>
+      fetch(`${trimSlash(this.settings.baseUrl)}/chat/completions`, {
+        method: 'POST',
+        headers,
+        signal,
+        body: JSON.stringify({
+          model: this.settings.model,
+          temperature: TEMPERATURE,
+          max_tokens: MAX_TOKENS,
+          ...this.extras(),
+          messages: [
+            { role: 'system', content: system },
+            ...turns.map((turn) => ({
+              role: turn.who === 'kit' ? 'assistant' : 'user',
+              content: turn.text,
+            })),
+            { role: 'user', content: userMessage },
+          ],
+        }),
+      });
+
+    let response = await post();
+    for (const key of EXTRA_KEYS) {
+      if (!REFUSED_FIELD.has(response.status) || this.refused.has(key)) continue;
+      // Once per field, then remembered. The prompt and the validator carry
+      // JSON on their own, so losing a field costs nothing but a little speed.
+      this.refused.add(key);
+      response = await post();
+    }
 
     const failure = statusFailure(response.status);
     if (failure) return { text: null, failure };
@@ -244,6 +277,12 @@ export class LlmBrain implements Brain {
     const body: unknown = await response.json();
     const text = readPath(body, ['content', '0', 'text']);
     return { text, failure: text === null ? 'server-error' : null };
+  }
+
+  private extras(): Partial<typeof REQUEST_EXTRAS> {
+    const kept: Partial<Record<ExtraKey, unknown>> = {};
+    for (const key of EXTRA_KEYS) if (!this.refused.has(key)) kept[key] = REQUEST_EXTRAS[key];
+    return kept as Partial<typeof REQUEST_EXTRAS>;
   }
 
   private succeed(output: BrainOutput): BrainOutput {

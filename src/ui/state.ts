@@ -6,6 +6,7 @@
  */
 
 import { signal } from '@preact/signals';
+import { DEFAULTS } from '../brain/llm';
 
 export interface ChatLine {
   readonly id: number;
@@ -83,8 +84,7 @@ export interface BrainStatusView {
 
 export const modelSettings = signal<ModelSettings>({
   provider: 'openai',
-  baseUrl: 'http://localhost:11434/v1',
-  model: 'qwen2.5:7b',
+  ...DEFAULTS.openai,
   remember: false,
 });
 

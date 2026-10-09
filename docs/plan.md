@@ -284,6 +284,19 @@ Checked against a real endpoint: Ollama 0.40.2 serving qwen2.5:7b, Apache 2.0, r
 | Deployed site calling a local model | **Blocked by the browser**, by design. Detected and explained in the banner. See decisions.md M5-5. |
 | Anthropic endpoint                  | Not yet checked live; needs a key. Request shape is covered by tests.                               |
 
+#### Qwen 3.5 9B, same machine, later the same day
+
+Ollama 0.40.2 serving qwen3.5:9b (Apache 2.0, from the model file). Prompt unchanged.
+
+| Case                                            | Result                                                                                                                                                                                   |
+| ----------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| JSON mode                                       | Refused (501 "structured output is unavailable"). Dropped once, then not sent again. See decisions.md M5-6.                                                                              |
+| Thinking on by default                          | With no effort field the whole reply budget went to hidden reasoning and the turn timed out. The effort field is kept even when JSON mode is dropped; verified warm replies in 2 to 3 s. |
+| Cold model, first call                          | Timed out at ten seconds, fell back to her own words, then fine. Same as the 7B.                                                                                                         |
+| Chat line ("what do you think of the moon?")    | Pass. In character, no actions, under five sentences.                                                                                                                                    |
+| Indirect request ("bare and gloomy round here") | Pass. Chose a sculpt on her own, reported when done.                                                                                                                                     |
+| qwen3.5:27b                                     | Does not load beside the game: needs 18.4 GiB, 17.3 GiB free. Usable for chat outside the game only.                                                                                     |
+
 ### M1 (2026-10-09, Apple Silicon, Chromium 156 on the real GPU, 1920x1080)
 
 | Measurement                          | Value                       | Budget                    | Status                                      |

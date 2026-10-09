@@ -154,3 +154,6 @@ test-results
 playwright-report
 blob-report
 .scratch
+
+# local editor and app state
+.claude/

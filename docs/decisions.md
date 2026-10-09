@@ -204,3 +204,10 @@ Why: the browser logs a refused request by itself and the page cannot silence it
 What: a page served over HTTPS may not call http://localhost. Chrome treats it as a public page reaching into a private network and refuses before the request leaves. Verified both ways: the deployed site throws, the same build served locally gets a 200.
 Why it matters: the obvious thing to try, opening the demo link and pointing it at Ollama, cannot work, and the generic "could not reach that address" was misleading.
 What was done: that case is now detected and named, and the banner tells the player to either run Daniblox locally or use a hosted provider on the deployed site. There is no fix from inside the page; this is the browser doing its job.
+
+## M5-6 — Default local model moved to Qwen 3.5 9B; optional request fields are dropped one at a time (2026-10-09)
+
+What: the local default is now qwen3.5:9b (Apache 2.0, confirmed from the model file). The request still asks for JSON mode and for no hidden reasoning; when a server refuses one of those fields with 400, 422 or 501, that field alone is dropped and remembered until the settings change.
+Why: this model reasons by default and the Ollama build of it does not support JSON mode. Sent as before, the server refused the request outright; with both fields stripped together, the model spent the entire 200-token budget thinking and the visible reply was empty, which looked like a ten-second timeout. Dropping one field at a time keeps the no-reasoning request alive.
+Rejected: a per-model settings toggle (one more thing to explain), and a hand-built model file on the Ollama side (fixes one machine, not the clone).
+Also pulled: qwen3.5:27b for chat outside the game. It needs about 18.4 GiB free and this 24 GB machine has 17 GiB free with the game and a browser open, so it is a close-everything-else model and not a default.

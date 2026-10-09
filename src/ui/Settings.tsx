@@ -1,4 +1,5 @@
 import { useState } from 'preact/hooks';
+import { DEFAULTS } from '../brain/llm';
 import styles from './Settings.module.css';
 import { brainMode, brainStatus, modelSettings, onApplyModel, onForgetKey } from './state';
 
@@ -40,13 +41,8 @@ export function Settings() {
               const next = (event.currentTarget as HTMLSelectElement).value as
                 'openai' | 'anthropic';
               setProvider(next);
-              if (next === 'anthropic') {
-                setBaseUrl('https://api.anthropic.com');
-                setModel('claude-haiku-4-5-20251001');
-              } else {
-                setBaseUrl('http://localhost:11434/v1');
-                setModel('qwen2.5:7b');
-              }
+              setBaseUrl(DEFAULTS[next].baseUrl);
+              setModel(DEFAULTS[next].model);
             }}
           >
             <option value="openai">On this machine, or any OpenAI-compatible server</option>

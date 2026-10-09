@@ -1,7 +1,12 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { Kit } from '../../src/folk/kit';
 import type { BrainRequest } from '../../src/brain/brain';
-import { BREAKER_COOLDOWN_MS, LlmBrain, type LlmSettings } from '../../src/brain/llm';
+import {
+  BREAKER_COOLDOWN_MS,
+  LlmBrain,
+  REQUEST_EXTRAS,
+  type LlmSettings,
+} from '../../src/brain/llm';
 import { RateLimiter } from '../../src/brain/rateLimiter';
 import { ScriptedBrain } from '../../src/brain/scripted';
 import {
@@ -153,6 +158,93 @@ describe('a good answer', () => {
     const headers = call.init.headers as Record<string, string>;
     expect(headers.Authorization).toBe('Bearer sk-test-canary');
     expect(String(call.init.body)).not.toContain('sk-test-canary');
+  });
+});
+
+describe('the optional request fields', () => {
+  it('asks for JSON and for no hidden reasoning', async () => {
+    let body = '';
+    const spy = vi.fn(async (_url: string, init: RequestInit) => {
+      body = String(init.body);
+      return openAiReply(GOOD);
+    });
+    const { brain } = brainWith(spy as unknown as typeof fetch);
+    await brain.respond(request());
+    const sent = JSON.parse(body) as Record<string, unknown>;
+    expect(sent.response_format).toEqual(REQUEST_EXTRAS.response_format);
+    expect(sent.reasoning_effort).toBe('none');
+  });
+
+  it('drops only the one a server refuses, and does not send it again', async () => {
+    // A local quantised model: no structured output, but it does reason by
+    // default, so the effort field has to survive or every reply is empty.
+    const bodies: Record<string, unknown>[] = [];
+    const spy = vi.fn(async (_url: string, init: RequestInit) => {
+      const sent = JSON.parse(String(init.body)) as Record<string, unknown>;
+      bodies.push(sent);
+      if ('response_format' in sent) {
+        return new Response('{"error":{"message":"structured output is unavailable"}}', {
+          status: 501,
+        });
+      }
+      return openAiReply(GOOD);
+    });
+    const { brain } = brainWith(spy as unknown as typeof fetch);
+
+    const output = await brain.respond(request());
+    expect(output.say).toBe('Hold on to something.');
+    expect(brain.status.mode).toBe('model');
+    expect(bodies).toHaveLength(2);
+    expect(bodies[1]).not.toHaveProperty('response_format');
+    expect(bodies[1]).toHaveProperty('reasoning_effort', 'none');
+
+    await brain.respond(request());
+    expect(bodies).toHaveLength(3);
+    expect(bodies[2]).not.toHaveProperty('response_format');
+    expect(bodies[2]).toHaveProperty('reasoning_effort', 'none');
+  });
+
+  it('drops both when a server refuses both, one at a time', async () => {
+    // A hosted model that neither reasons nor minds JSON mode would refuse
+    // the effort field; one that refuses both still gets answered.
+    const bodies: Record<string, unknown>[] = [];
+    const spy = vi.fn(async (_url: string, init: RequestInit) => {
+      const sent = JSON.parse(String(init.body)) as Record<string, unknown>;
+      bodies.push(sent);
+      return 'response_format' in sent || 'reasoning_effort' in sent
+        ? new Response('{"error":"unsupported parameter"}', { status: 400 })
+        : openAiReply(GOOD);
+    });
+    const { brain } = brainWith(spy as unknown as typeof fetch);
+    const output = await brain.respond(request());
+    expect(output.say).toBe('Hold on to something.');
+    expect(bodies).toHaveLength(3);
+    expect(bodies[2]).not.toHaveProperty('response_format');
+    expect(bodies[2]).not.toHaveProperty('reasoning_effort');
+  });
+
+  it('tries them again after the settings change', async () => {
+    const bodies: Record<string, unknown>[] = [];
+    const spy = vi.fn(async (_url: string, init: RequestInit) => {
+      const sent = JSON.parse(String(init.body)) as Record<string, unknown>;
+      bodies.push(sent);
+      return 'response_format' in sent && bodies.length === 1
+        ? new Response('no', { status: 400 })
+        : openAiReply(GOOD);
+    });
+    const { brain } = brainWith(spy as unknown as typeof fetch);
+    await brain.respond(request());
+    brain.update({ ...SETTINGS, model: 'another' });
+    await brain.respond(request());
+    expect(bodies[2]).toHaveProperty('response_format');
+  });
+
+  it('still reports a real server error', async () => {
+    const { brain } = brainWith(
+      vi.fn(async () => new Response('boom', { status: 500 })) as unknown as typeof fetch,
+    );
+    await brain.respond(request());
+    expect(brain.status.reason).toBe('server-error');
   });
 });
 
