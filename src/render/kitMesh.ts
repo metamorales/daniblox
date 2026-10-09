@@ -44,6 +44,132 @@ const HOP_HZ = 2.2;
 const INK = '#332a4a';
 const NOSE = '#c4707f';
 const BLUSH = '#f2a7b4';
+const GEM = '#ff5fa2';
+const CREAM = '#fdf3e2';
+
+/**
+ * The floating action icon (spec: a floating icon for the current action).
+ * Each glyph is 12 by 10 pixels of two-pixel strokes, drawn on a cream badge
+ * with an ink border like the nameplate, so it reads against any terrain.
+ * "#" is ink, "o" is gem pink, "." is the badge. Two rows under the glyph
+ * are kept for the progress bar.
+ */
+const GLYPHS: Record<string, readonly string[]> = {
+  walking: [
+    '##....##....',
+    '.##....##...',
+    '..##....##..',
+    '...##....##.',
+    '....##....##',
+    '....##....##',
+    '...##....##.',
+    '..##....##..',
+    '.##....##...',
+    '##....##....',
+  ],
+  mining: [
+    '.........###',
+    '........####',
+    '.......##.##',
+    '......##....',
+    '.....##.....',
+    '....##......',
+    '.#####......',
+    '######......',
+    '######......',
+    '.####.......',
+  ],
+  building: [
+    '....########',
+    '....#oooooo#',
+    '....#oooooo#',
+    '....########',
+    '########....',
+    '#oooooo#....',
+    '#oooooo#....',
+    '########....',
+    '............',
+    '............',
+  ],
+  following: [
+    '....####....',
+    '..##....##..',
+    '.#........#.',
+    '.#...oo...#.',
+    '#...oooo...#',
+    '#...oooo...#',
+    '.#...oo...#.',
+    '.#........#.',
+    '..##....##..',
+    '....####....',
+  ],
+  wandering: [
+    '.....##.....',
+    '....####....',
+    '...##..##...',
+    '..##.oo.##..',
+    '.##..oo..##.',
+    '.##..oo..##.',
+    '..##....##..',
+    '...##..##...',
+    '....####....',
+    '.....##.....',
+  ],
+  reshaping: [
+    '........o...',
+    '.......ooo..',
+    '........o...',
+    '....##......',
+    '...####.....',
+    '..##..##.##.',
+    '.##....###.#',
+    '##......##..',
+    '############',
+    '############',
+  ],
+};
+
+const ICON_SIZE = 16;
+/** Where the glyph sits inside the badge. */
+const GLYPH_AT = 2;
+const BAR_ROW = 12;
+const BAR_LEFT = 2;
+const BAR_WIDTH = 12;
+
+/** Draw the badge, a glyph and, when given, a progress bar under it. */
+function paintIcon(
+  context: CanvasRenderingContext2D,
+  glyph: readonly string[],
+  progress: number | null,
+): void {
+  context.clearRect(0, 0, ICON_SIZE, ICON_SIZE);
+  // Badge: ink border with the corner pixels left clear, cream inside.
+  context.fillStyle = INK;
+  context.fillRect(1, 0, ICON_SIZE - 2, ICON_SIZE);
+  context.fillRect(0, 1, ICON_SIZE, ICON_SIZE - 2);
+  context.fillStyle = CREAM;
+  context.fillRect(1, 1, ICON_SIZE - 2, ICON_SIZE - 2);
+
+  glyph.forEach((row, y) => {
+    for (let x = 0; x < row.length; x++) {
+      const cell = row[x];
+      if (cell === '.' || cell === undefined) continue;
+      context.fillStyle = cell === 'o' ? GEM : INK;
+      context.fillRect(GLYPH_AT + x, GLYPH_AT + y, 1, 1);
+    }
+  });
+
+  if (progress === null) return;
+  context.fillStyle = INK;
+  context.fillRect(BAR_LEFT, BAR_ROW, BAR_WIDTH, 2);
+  context.fillStyle = GEM;
+  context.fillRect(
+    BAR_LEFT,
+    BAR_ROW,
+    Math.round(BAR_WIDTH * Math.min(1, Math.max(0, progress))),
+    2,
+  );
+}
 
 interface Part {
   readonly geometry: BufferGeometry;
@@ -169,6 +295,11 @@ export class KitMesh {
   private readonly shadow: Mesh;
   private readonly face: Mesh;
   private readonly plate: Mesh;
+  private readonly icon: Mesh;
+  private readonly iconCanvas: HTMLCanvasElement;
+  private readonly iconTexture: CanvasTexture;
+  private iconShown: string | null = null;
+  private iconProgress: number | null = null;
   private readonly material = new CreatureMaterial();
   private readonly openFace = faceOpen();
   private readonly shutFace = faceShut();
@@ -278,9 +409,28 @@ export class KitMesh {
     );
     this.plate.position.y = 1.32;
 
-    this.group.add(this.body, this.shadow, this.plate);
+    this.iconCanvas = document.createElement('canvas');
+    this.iconCanvas.width = ICON_SIZE;
+    this.iconCanvas.height = ICON_SIZE;
+    this.iconTexture = new CanvasTexture(this.iconCanvas);
+    this.iconTexture.magFilter = NearestFilter;
+    this.iconTexture.minFilter = NearestFilter;
+    this.iconTexture.generateMipmaps = false;
+    this.icon = new Mesh(
+      new PlaneGeometry(0.5, 0.5),
+      new MeshBasicMaterial({ map: this.iconTexture, transparent: true, side: DoubleSide }),
+    );
+    this.icon.position.y = 1.78;
+    this.icon.visible = false;
+
+    this.group.add(this.body, this.shadow, this.plate, this.icon);
     this.group.name = `kit-${kit.id}`;
     this.geometries.push(torso, head, tail);
+  }
+
+  /** Which glyph floats above her right now, for tests and the perf panel. */
+  get shownIcon(): string | null {
+    return this.icon.visible ? this.iconShown : null;
   }
 
   setNightTint(tint: Color): void {
@@ -357,6 +507,32 @@ export class KitMesh {
     // The nameplate turns to the camera whichever way she faces, so her name
     // is readable from any angle.
     this.plate.rotation.y = Math.atan2(camera.x - x, camera.z - z) - kit.facing;
+    this.icon.rotation.y = this.plate.rotation.y;
+    this.updateIcon(reducedMotion);
+  }
+
+  /** The glyph for the current job, redrawn only when something changes. */
+  private updateIcon(reducedMotion: boolean): void {
+    const kit = this.kit;
+    const activity = kit.activity;
+    const glyph = activity ? GLYPHS[activity] : undefined;
+    if (!glyph || !activity) {
+      this.icon.visible = false;
+      return;
+    }
+    // Twelve steps, the same resolution as the bar, so the texture is not
+    // uploaded every frame for a change nobody could see.
+    const progress =
+      kit.progress === null ? null : Math.round(kit.progress * BAR_WIDTH) / BAR_WIDTH;
+    if (activity !== this.iconShown || progress !== this.iconProgress) {
+      const context = this.iconCanvas.getContext('2d');
+      if (context) paintIcon(context, glyph, progress);
+      this.iconTexture.needsUpdate = true;
+      this.iconShown = activity;
+      this.iconProgress = progress;
+    }
+    this.icon.visible = true;
+    this.icon.position.y = reducedMotion ? 1.78 : 1.78 + Math.sin(this.elapsed * 2.4) * 0.03;
   }
 
   dispose(): void {
@@ -367,6 +543,9 @@ export class KitMesh {
     (this.face.material as MeshBasicMaterial).dispose();
     this.plate.geometry.dispose();
     (this.plate.material as MeshBasicMaterial).dispose();
+    this.icon.geometry.dispose();
+    (this.icon.material as MeshBasicMaterial).dispose();
+    this.iconTexture.dispose();
     this.material.dispose();
     this.openFace.dispose();
     this.shutFace.dispose();

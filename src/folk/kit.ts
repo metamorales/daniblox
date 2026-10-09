@@ -60,6 +60,8 @@ export class Kit {
   lastProblem: string | null = null;
   /** Pathfinding nodes expanded so far, for the perf panel. */
   pathNodes = 0;
+  /** How far through the current block of work, 0 to 1, or null between jobs. */
+  progress: number | null = null;
 
   private path: Cell[] = [];
   private pathIndex = 0;

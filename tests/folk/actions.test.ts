@@ -123,6 +123,32 @@ describe('mine', () => {
     expect(h.kit.carrying(5)).toBe(1);
   });
 
+  it('reports how far through the block she is, and only while she works', () => {
+    const h = harness();
+    // Far enough that she has to walk first.
+    h.world.set(12, 1, 8, 5);
+    h.queue.push([{ type: 'mine', at: { x: 12, y: 1, z: 8 } }]);
+    let clock = 0;
+    const now = (): number => (clock += 0.05);
+    const seen: (number | null)[] = [];
+    for (let i = 0; i < 80 && !h.queue.idle; i++) {
+      h.kit.tick(h.world, now);
+      h.queue.tick();
+      seen.push(h.kit.progress);
+    }
+    // Nothing while walking over, a steady climb while digging, nothing after.
+    expect(seen[0]).toBeNull();
+    const climbing = seen.filter((p): p is number => p !== null);
+    expect(climbing.length).toBeGreaterThan(5);
+    expect(climbing[0]).toBeGreaterThan(0);
+    // The bar fills on the tick the block comes out, and clears in the same tick.
+    expect(climbing[climbing.length - 1]).toBeGreaterThanOrEqual(11 / 12);
+    for (let i = 1; i < climbing.length; i++) {
+      expect(climbing[i]).toBeGreaterThan(climbing[i - 1] ?? 0);
+    }
+    expect(h.kit.progress).toBeNull();
+  });
+
   it('gathers a count of a type', () => {
     const h = harness();
     for (let i = 0; i < 4; i++) h.world.set(11 + i, 1, 8, 5);

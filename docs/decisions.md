@@ -216,3 +216,40 @@ Also pulled: qwen3.5:27b for chat outside the game. It needs about 18.4 GiB free
 
 What: the loop clamps a frame's elapsed time at zero before anyone sees it, the camera easing is held to the 0..1 range, and the reticle cell's height is never negative. The scripted brain now logs loudly when its own output fails the schema.
 Why: under load, two end-to-end tests failed about one run in twenty with "something went sideways", which is the line for an output of ours that failed our own schema. The logged cause was a reticle one block below the world. An animation-frame timestamp marks the start of the frame, which can fall before the clock read when the loop was armed, so the first frame's elapsed time came out negative, the easing ran backwards for a frame, and a command sent at that moment pointed at y = -1. Verified: 64 runs at four workers, zero failures, where before it was two in 32.
+
+## M6-1 — A plain click on a block opens a menu; the modifiers stay as quick hands (2026-10-09)
+
+What: clicking or long-pressing a block opens a small menu with three things Luciana can do there and two the player can do themselves. Shift-click still places a tile and Alt-click still breaks, without the menu.
+Why: spec R5 asks for click-to-direct and a long-press menu on touch. One menu for both pointer kinds means one code path and one set of tests, and the player's own edits sit in the same list rather than behind a key only a tour guide would know.
+Rejected: a plain click that breaks a block outright, which M1 shipped. Losing a block to a mis-click while trying to point at it was the more common accident.
+
+## M6-2 — Near render distance is 24 blocks from the orbit point, and fog follows it (2026-10-09)
+
+What: "near" keeps chunks whose centre is within 24 blocks of the point the camera orbits, which is four of sixteen at the default view, and sets fog to close exactly at that reach. "Automatic" picks near when the viewport is under 720 px wide or the pointer is coarse.
+Why: the phone budget in R6 asks for reduced distance. Measuring from the orbit point rather than the camera keeps the visible set stable while zooming, and fog at the reach turns the cut-off into haze instead of a cliff.
+
+## M6-3 — The welcome keys on a seen flag and on the save (2026-10-09)
+
+What: the three-step welcome shows when neither `daniblox:onboarded` nor the save key exists in local storage. Finishing or skipping writes the flag; settings can bring it back. With storage switched off it shows on every visit and is one key to dismiss.
+Why: "shown when there is no save" is the plan's rule, and M7's save arrives later; the flag covers the gap and also stops the welcome returning after a reset, which keeps the flag while removing the save.
+
+## M6-4 — Pixel type stays everywhere; the escape hatch was not needed (2026-10-09)
+
+What: Pixelify Sans remains the face for chat and body text, not only labels.
+Why: the plan reserved a swap to a rounded sans if long chat threads tested poorly. Read across a few hundred lines in both themes at 16 px it held up, and one face keeps the panel consistent with the world.
+
+## M6-5 — Perf numbers are sampled only while the settings panel is open (2026-10-09)
+
+What: frame times are kept in a 120-frame window at all times, but the sorted percentiles, draw calls and path-node rate are computed and published only every 30 frames while settings is open.
+Why: the readout is for the person tuning the game, and a sort twice a second is pointless work for everyone else. The window is always kept so the numbers are honest the moment the panel opens.
+
+## M6-6 — Lighthouse runs on demand, not as a dependency (2026-10-09)
+
+What: the accessibility and best-practice scores come from `npx lighthouse@12` pointed at `vite preview`, driven by Playwright's own Chromium, and are recorded in plan.md section 5. It is not in package.json.
+Why: Lighthouse pulls in a large tree for a check that runs a handful of times a project, and the spec's dependency rule is about keeping the install small. The exact command is in plan.md so anyone can repeat it.
+
+## M6-7 — The action icon is a pixel glyph above the nameplate, with the progress bar in it (2026-10-09)
+
+What: a 16 by 16 glyph for walking, mining, building, following, wandering and reshaping floats above Luciana's name while a job runs, and a two-pixel bar along its bottom fills as she works through a block. It is one extra draw call per kit while she is busy, so the draw-call budget is now visible chunks plus seven per kit plus four overlays.
+Why: the spec's MVP asks for a floating icon for the current action, and section 3.8 rule 6 wants mining progress visible. Putting the bar on the icon rather than over the target block keeps it in one place the eye already watches, and avoids a second billboard that would have to find the block from the kit's job.
+Rejected: a bar over the target block as well. Nothing stops it being added later; the queue already exposes the progress.

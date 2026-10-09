@@ -70,7 +70,15 @@ test.describe('talking to Luciana', () => {
       })
       .not.toBe(start?.x);
 
+    // The floating icon says what she is doing, and goes away when she stops.
+    await expect
+      .poll(async () => page.evaluate(() => window.__app?.activityIcon('luciana') ?? null))
+      .toBe('wandering');
+
     await say(page, 'stop');
+    await expect
+      .poll(async () => page.evaluate(() => window.__app?.activityIcon('luciana') ?? null))
+      .toBeNull();
     await page.waitForTimeout(500);
     const resting = await page.evaluate(() => window.__app?.kits[0]?.cell);
     await page.waitForTimeout(800);

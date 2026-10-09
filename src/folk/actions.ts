@@ -84,6 +84,7 @@ export class ActionQueue {
     this.pause = 0;
     this.kit.stop();
     this.kit.activity = null;
+    this.kit.progress = null;
   }
 
   push(actions: readonly Action[]): void {
@@ -113,12 +114,14 @@ export class ActionQueue {
     const job = this.jobs[0];
     if (!job) {
       this.kit.activity = null;
+      this.kit.progress = null;
       return;
     }
 
     const done = this.run(job);
     if (done) {
       this.jobs.shift();
+      this.kit.progress = null;
       if (this.jobs.length === 0) this.kit.activity = null;
     }
   }
@@ -228,6 +231,7 @@ export class ActionQueue {
       return true;
     }
     kit.activity = 'mining';
+    kit.progress = null;
 
     if (!job.started) {
       job.started = true;
@@ -245,6 +249,7 @@ export class ActionQueue {
     // Face it, work for a moment, then take it.
     kit.facing = Math.atan2(at.x + 0.5 - kit.position.x, at.z + 0.5 - kit.position.z);
     job.work++;
+    kit.progress = job.work / MINE_TICKS;
     if (job.work < MINE_TICKS) return false;
 
     world.set(at.x, at.y, at.z, AIR);
@@ -257,6 +262,7 @@ export class ActionQueue {
     const kit = this.kit;
     const world = this.context.world;
     kit.activity = 'mining';
+    kit.progress = null;
 
     if (job.mined >= count) {
       this.context.report(kit, 'gathered', { block, count: job.mined });
@@ -302,6 +308,7 @@ export class ActionQueue {
 
     kit.facing = Math.atan2(at.x + 0.5 - kit.position.x, at.z + 0.5 - kit.position.z);
     job.work++;
+    kit.progress = job.work / MINE_TICKS;
     if (job.work < MINE_TICKS) return false;
 
     world.set(at.x, at.y, at.z, AIR);

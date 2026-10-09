@@ -27,7 +27,7 @@ test.describe('the world', () => {
     // or a kit's face and nameplate, so the budget here is that plus a fixed
     // overlay allowance. Recorded in docs/decisions.md.
     const kits = await page.evaluate(() => window.__app?.kits.length ?? 0);
-    expect(perf.drawCalls).toBeLessThanOrEqual(perf.visibleChunks + kits * 6 + 4);
+    expect(perf.drawCalls).toBeLessThanOrEqual(perf.visibleChunks + kits * 7 + 4);
   });
 
   test('culls chunks outside the view when zoomed in close', async ({ page }) => {

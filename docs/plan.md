@@ -319,3 +319,33 @@ arrays and converting at the end. Tracked for M8.
 Not yet measured: a real Android device, and frame time with kits active.
 
 M0 checks that are automated rather than measured: the originality word check, the folder README limit, the import boundary fixture, the WebGL2 fallback path, and the absence of console errors and unhandled rejections in both e2e projects.
+
+### M6 (2026-10-09, Apple Silicon, Playwright Chromium 1248 with SwiftShader unless noted)
+
+**Controls, re-run.** Every row below is a browser test in `e2e/` unless marked.
+
+| Control                            | How it is checked                                      | Status                           |
+| ---------------------------------- | ------------------------------------------------------ | -------------------------------- |
+| Left-drag orbit                    | world.spec: camera moves, no block edited              | pass                             |
+| Wheel zoom                         | world.spec: distance to target shrinks                 | pass                             |
+| WASD and arrows pan                | world.spec: W moves the orbit cell                     | pass                             |
+| Right-drag or Shift-drag pan       | manual, this Mac, real GPU                             | pass                             |
+| Double-click centre                | manual, this Mac                                       | pass                             |
+| Click a block                      | palette.spec, world.spec: the menu opens, items act    | pass                             |
+| Shift-click place, Alt-click break | world.spec (shift), manual (alt)                       | pass                             |
+| F focuses Luciana                  | palette.spec: orbit point lands on her                 | pass                             |
+| Ctrl or Cmd and K palette, Esc     | palette.spec: opens, sends, closes                     | pass                             |
+| Esc closes the menu                | palette.spec                                           | pass                             |
+| Two-finger scroll zoom             | manual, trackpad on this Mac                           | pass                             |
+| One-finger orbit, two-finger pan   | manual, iPhone Safari over the local network           | not yet: needs the owner's phone |
+| Tap a block                        | mobile.spec with touch emulation: the menu opens       | pass                             |
+| Long press                         | palette.spec: a held press opens the menu              | pass                             |
+| Bottom sheet                       | mobile.spec: the handle raises it, aria-expanded flips | pass                             |
+
+**Accessibility.** Lighthouse 12 against `vite preview` in Playwright's Chromium (headless, new mode): accessibility **100**, best practices **100**; the spec asks for 95 and 90. Automated besides that: a focus ring on every element Tab reaches (access.spec, 20-plus elements with the settings panel open), the canvas label and the single polite live region, system reduced motion turning easing off, 44 px on every control at 375 by 812 (mobile.spec), and a keyboard-only run from the welcome through an order and a chat to a settings change (onboarding.spec). Contrast: seven unit tests over the token file, both themes, all pairs at or above AA.
+
+**Welcome.** Three steps, 28, 25 and 30 words including buttons, three keypresses to finish; the browser test completes it in under two seconds from first paint. The owner's own stopwatch run is still to be recorded, with the 30 second ceiling expected to hold by a wide margin.
+
+**Look test.** The four frames are in `docs/litmus/` (sunlit meadow at distance, a close slope, night, Luciana up close), captured by `tools/litmus.mjs` with the whole interface hidden. They have not yet been shown to five people; that step needs the owner and is recorded here as pending. One note on the fourth frame: it caught Luciana standing beside the ring rather than mid-dig, because the nearest bark was further than the capture waited; the action icon and its progress sweep are the subject of the next entry.
+
+**Render distance.** At the default view all 16 chunks are in the frustum; near keeps 4. A 375 px viewport switches to near by itself (settings.spec, mobile.spec).

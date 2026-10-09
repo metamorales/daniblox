@@ -46,6 +46,8 @@ export interface WorldView {
   sendTo(kitId: string, cell: { x: number; y: number; z: number }): void;
   /** The block under the pointer, which is what "this" means in a command. */
   pointedAt(): { x: number; y: number; z: number } | null;
+  /** The action glyph floating over a kit, or null when she is idle. */
+  activityIcon(kitId: string): string | null;
   /** The player's own edit, with the squash effect. False when nothing changed. */
   editBlock(x: number, y: number, z: number, id: number): boolean;
   /** Turn easing and bobbing off, on top of whatever the system asks for. */
@@ -151,6 +153,11 @@ export async function createWorldView(
     pointedAt(): { x: number; y: number; z: number } | null {
       const target = interaction.target;
       return target ? { x: target.x, y: target.y, z: target.z } : null;
+    },
+
+    activityIcon(kitId): string | null {
+      const index = kits.findIndex((kit) => kit.id === kitId);
+      return kitMeshes[index]?.shownIcon ?? null;
     },
 
     editBlock(x, y, z, id): boolean {
