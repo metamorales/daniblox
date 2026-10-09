@@ -368,3 +368,76 @@ M0 checks that are automated rather than measured: the originality word check, t
 | Damaged link → fallback with a toast                             | unit and save.spec                                               | pass   |
 
 Save size for a lightly edited meadow is about 3 KB; a link with a few edits is under 200 characters.
+
+### M8 (2026-10-09, Apple M4 with 24 GB, macOS 15, Chromium 156 headed on the real GPU via `tools/measure.mjs`, build served by `vite preview`)
+
+**R6 budgets.** The bench is `?bench=1`: Luciana wandering and digging under an orbiting camera, sixty seconds, the first two seconds of warm-up kept out of the percentiles and reported on their own (decisions M8-3). The display runs at 100 Hz, so 10 ms is a full frame.
+
+| Measurement                              | Laptop, full world | Phone profile, 375 by 812, CPU slowed 4× | Budget                 | Status                     |
+| ---------------------------------------- | ------------------ | ---------------------------------------- | ---------------------- | -------------------------- |
+| Frame time, p50                          | 10.0 ms            | 10.0 ms                                  | —                      |                            |
+| Frame time, p95                          | 11.9 ms            | 11.9 ms                                  | 16.7 ms (laptop)       | pass                       |
+| Frame time, worst in play                | 12.1 ms at 44 s    | 12.1 ms at 22 s                          | 33 ms                  | pass                       |
+| Worst warm-up frame (first two seconds)  | 52 ms              | 121 ms                                   | — (start-up)           | reported, not budgeted     |
+| Draw calls, mean / max                   | 26.5 / 27          | 14.3 / 15                                | visible chunks + 7 + 4 | pass (16 chunks; 4 chunks) |
+| Path nodes per frame                     | 2.1                | 4.3                                      | —                      |                            |
+| Frames per second implied                | 97                 | 93                                       | 60 laptop, 30 phone    | pass                       |
+| Time to interactive, Fast 4G, cold       | 593 ms             |                                          | 3 s                    | pass                       |
+| Bundle, gzipped, without atlas and fonts | 177 KB             |                                          | 600 KB                 | pass                       |
+
+The phone row is DevTools-style emulation on the laptop's own GPU, not a device, so R11.3 is partial until a 2022 mid-range Android is in hand. Eight active kits cannot be measured with a roster of one; the per-kit cost is seven draw calls and one path search at a time, budgeted in the soak and the draw-call tests.
+
+**Soak.** `SOAK_SECONDS=120 npx playwright test e2e/soak.spec.ts`: two minutes of every job in turn with a block pulled from under her mid-walk and the camera orbiting, 1,200-plus samples, no clipping, no step faster than she can walk, draw calls inside the budget on every sample, no console errors. The first run of this test found her buried by her own hill, fixed in decisions M8-2. CI runs thirty seconds of it on every push.
+
+**Browser matrix.**
+
+| Browser                        | How                                       | Result                                                             |
+| ------------------------------ | ----------------------------------------- | ------------------------------------------------------------------ |
+| Chromium 156 (Playwright)      | every e2e run, SwiftShader                | pass                                                               |
+| Firefox (Playwright, headless) | `BROWSER_MATRIX=1`, boot spec             | pass                                                               |
+| WebKit (Playwright, headless)  | `BROWSER_MATRIX=1`, boot spec             | pass                                                               |
+| Chrome on this Mac             | by hand on the dev server, real GPU       | pass                                                               |
+| Safari on this Mac             | by hand on the dev server                 | pass                                                               |
+| Edge, Firefox on this Mac      | not installed                             | untested here; the Playwright engines above cover Gecko and WebKit |
+| iOS Safari, Android Chrome     | no device on hand                         | untested on device                                                 |
+| WebGL2 disabled                | Playwright `nowebgl` project on every run | fallback screen shown, Three.js never fetched                      |
+
+**Hero GIF.** `tools/hero.mjs` records ten seconds in a headed Chromium and ffmpeg turns it into `docs/hero.gif`: 640 px wide, 8 fps, 96 colours, 84 frames, 10.5 s, 5.8 MB; `npm run check:gif` reads the GIF's own frame delays and passes.
+
+**Lighthouse** against `vite preview`: accessibility 100, best practices 100 (M6 above). The deployed URL serves the same build.
+
+### R9 traceability
+
+| R9 line                                                        | Test                                                                                                                                                   |
+| -------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| mesher: 1 block → 6 faces, 2 → 10, enclosed → 0, AO corner     | `tests/world/mesher.test.ts`                                                                                                                           |
+| pathfinding: wall, 2-high step, fall ≤3, unreachable, node cap | `tests/folk/pathfinding.test.ts`                                                                                                                       |
+| parser ≥20 cases incl. 5 unparsable                            | `tests/brain/parser.test.ts`                                                                                                                           |
+| validator, one case per rejection rule                         | `tests/brain/schema.test.ts`                                                                                                                           |
+| RLE round-trip                                                 | `tests/world/rle.test.ts`                                                                                                                              |
+| save/load round-trip                                           | `tests/app/persistence.test.ts`, `e2e/save.spec.ts`                                                                                                    |
+| no key reaches localStorage                                    | `tests/app/keyStore.test.ts`, `tests/app/persistence.test.ts`, `e2e/model.spec.ts` ("never writes the key"), `e2e/save.spec.ts` ("no key in the save") |
+| e2e: boots without console errors                              | `e2e/boot.spec.ts` with the console guard in `e2e/fixtures.ts` on every test                                                                           |
+| e2e: the kit is in the roster                                  | `e2e/world.spec.ts` ("stands in the world with a name")                                                                                                |
+| e2e: "wander" changes the status                               | `e2e/command.spec.ts` ("walks somewhere when asked, and stops when told")                                                                              |
+| e2e: WebGL unavailable → fallback                              | `e2e/fallback.spec.ts` in the `nowebgl` project                                                                                                        |
+| CI: Node 20, lint → test → build → e2e → deploy, audit         | `.github/workflows/ci.yml`                                                                                                                             |
+
+### R11 evidence
+
+| Item | Status  | Evidence                                                                                                                                                                                                                              |
+| ---- | ------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1    | pass    | lint, 246 unit tests, build, 58 browser tests locally; CI runs the same and the smoke suite on the live URL                                                                                                                           |
+| 2    | partial | Chromium, Firefox and WebKit engines boot in Playwright; Chrome and Safari by hand on this Mac; no Edge or Firefox installed here; no iOS or Android device. Fallback screen covered on every run                                     |
+| 3    | partial | laptop numbers above pass every R6 line; phone is emulation, not a device; eight kits do not exist in a roster of one                                                                                                                 |
+| 4    | pass    | every action by typed command (command.spec), palette (palette.spec) and the block menu (palette.spec, world.spec); no clipping or teleport in soak.spec; unreachable handling in actions.test                                        |
+| 5    | pass    | R9 table above; parser cases well over twenty with more than five unparsable; one validator test per rejection rule                                                                                                                   |
+| 6    | partial | OpenAI-compatible endpoint verified live against Ollama twice (plan M5 tables); retry, badge, cap and timeout covered by model.spec; Anthropic endpoint has the request shape under test but no live run, which needs the owner's key |
+| 7    | pass    | save.spec: reload, reset, share round trips; the key is absent from storage and links                                                                                                                                                 |
+| 8    | pass    | onboarding.spec keyboard-only run; access.spec focus rings, live region, reduced motion; Lighthouse 100 and 100                                                                                                                       |
+| 9    | partial | originality word check green on every lint; design.md documents the differences; the four litmus frames exist in docs/litmus but have not yet been shown to five people                                                               |
+| 10   | pass    | 177 KB gzipped against 600 KB; 593 ms to interactive on Fast 4G against 3 s                                                                                                                                                           |
+| 11   | pass    | README with GIF and link above the fold, quickstart, controls, brains, three guides; architecture.md, design.md, decisions.md, CONTRIBUTING.md, LICENSE with the CC0 art note, issue templates                                        |
+| 12   | pass    | onboarding.spec: three steps, three keypresses, under two seconds; skippable; replay from settings                                                                                                                                    |
+| 13   | amended | one kit, so no kit-to-kit exchange; idle remarks at most one per thirty seconds, scripted unless the model switch is on (decisions M8-1)                                                                                              |
+| 14   | amended | the owner removed the content filter (decisions M4-0); there is no blocklist and no all-ages rule                                                                                                                                     |

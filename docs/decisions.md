@@ -274,3 +274,38 @@ Why: the spec asks for a versioned migration stub. Guessing at a newer shape cou
 
 What: every real block change, load or reseed bumps an integer on the world.
 Why: it is what lets the saver skip untouched frames, lets a guest world notice its first edit, and costs one increment.
+
+## M8-1 — Idle remarks are one kit musing, scripted unless the player says otherwise (2026-10-09)
+
+What: with one kit there is no kit-to-kit chatter, so the ambient line is Luciana saying something to herself after thirty to sixty seconds of being left alone, never while busy, and never within five seconds of finishing a job. The first one waits a full gap from the start of the session. A settings switch lets the model write these; off, they come from her templates.
+Why: spec R3 and the MVP ask for ambient chatter at one exchange per thirty seconds with the model off by default; this is that rule with the second speaker removed. The scheduler runs on the simulation clock, so it pauses with the tab.
+
+## M8-2 — A power never leaves her inside a block (2026-10-09)
+
+What: after any world-scale power, a kit whose cell or head became solid is stood on the new surface of her column with a short line.
+Why: the two-minute soak found her buried by her own raised hill. Powers are instant and area-wide, so the queue is the one place that can check everyone afterwards.
+
+## M8-3 — The bench skips two seconds of warm-up and says so (2026-10-09)
+
+What: `?bench=1` drops the first two seconds from its percentiles, reports the worst warm-up frame separately, and records when its worst steady frame happened.
+Why: shader compilation and the first mesh upload land in the first frames on every browser and are start-up cost, not play. R6 is a budget for play. Both numbers are in plan.md section 5 so nothing is hidden.
+
+## M8-4 — The soak runs thirty seconds in CI and two minutes on record (2026-10-09)
+
+What: `e2e/soak.spec.ts` takes its length from `SOAK_SECONDS`, thirty by default; the two-minute run the plan asks for was done on the dev laptop and is recorded in section 5.
+Why: two more minutes on every push buys nothing the thirty-second run and the recorded run do not already show, and the deploy waits on CI.
+
+## M8-5 — Firefox and WebKit are opt-in projects (2026-10-09)
+
+What: the boot test runs in Playwright's Firefox and WebKit when `BROWSER_MATRIX` is set; CI installs Chromium alone.
+Why: two more browser downloads on every CI run for a boot check that the recorded run already covers. The projects exist so anyone can repeat it in one command.
+
+## M8-6 — Lighthouse, the bench, the litmus capture and the hero recording are tools, not tests (2026-10-09)
+
+What: `tools/measure.mjs`, `tools/litmus.mjs` and `tools/hero.mjs` drive a headed Chromium against `vite preview` on the developer's machine and are run by hand; `tools/check-gif.mjs` is the one that gates, and only on the GIF's size and length.
+Why: real-GPU numbers and a readable recording need a real window, which CI does not have. The commands and their dates are in plan.md.
+
+## M8-7 — idb-keyval was removed (2026-10-09)
+
+What: the dependency was installed at M0 as one the spec allows and never used; localStorage covers the save and sessionStorage the key.
+Why: an unused package is weight in the lockfile and a question for every reader.

@@ -19,3 +19,13 @@ AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
+
+---
+
+Art in this repository, meaning the tile atlas and its source recipes under
+public/atlas/, the gem and the action glyphs, is released under CC0 1.0
+Universal: to the extent possible under law, the author has waived all
+copyright and related rights to it. See https://creativecommons.org/publicdomain/zero/1.0/
+
+The typefaces under public/fonts/ are not part of this grant; each is under
+the SIL Open Font Licence, included beside it.

@@ -7,12 +7,19 @@
 import type { WorldView } from '../render/scene';
 import type { Game } from './game';
 
+/** Shader compilation and the first mesh upload land in the first frames; they are start-up, not play. */
+export const WARM_UP_MS = 2000;
+
 export interface BenchResult {
   readonly seconds: number;
   readonly frames: number;
   readonly p50: number;
   readonly p95: number;
   readonly max: number;
+  /** Seconds into the run when the worst frame happened. */
+  readonly maxAt: number;
+  /** The worst frame seen during warm-up, reported separately. */
+  readonly warmUpMax: number;
   readonly drawCallsMean: number;
   readonly drawCallsMax: number;
   readonly visibleChunksMean: number;
@@ -30,6 +37,9 @@ declare global {
 export function startBench(view: WorldView, game: Game, seconds: number): void {
   window.__bench = 'running';
   const frameTimes: number[] = [];
+  let warmUpMax = 0;
+  let worst = 0;
+  let worstAt = 0;
   let drawCalls = 0;
   let drawCallsMax = 0;
   let visible = 0;
@@ -39,10 +49,19 @@ export function startBench(view: WorldView, game: Game, seconds: number): void {
 
   const step = (): void => {
     const now = performance.now();
-    frameTimes.push(view.perf.frameMs);
-    drawCalls += view.perf.drawCalls;
-    drawCallsMax = Math.max(drawCallsMax, view.perf.drawCalls);
-    visible += view.perf.visibleChunks;
+    const frameMs = view.perf.frameMs;
+    if (now - started < WARM_UP_MS) {
+      warmUpMax = Math.max(warmUpMax, frameMs);
+    } else {
+      frameTimes.push(frameMs);
+      if (frameMs > worst) {
+        worst = frameMs;
+        worstAt = (now - started) / 1000;
+      }
+      drawCalls += view.perf.drawCalls;
+      drawCallsMax = Math.max(drawCallsMax, view.perf.drawCalls);
+      visible += view.perf.visibleChunks;
+    }
     view.orbit.nudge(0.004, 0);
 
     // Keep her busy: a fresh wander every few seconds, with the odd dig.
@@ -67,6 +86,8 @@ export function startBench(view: WorldView, game: Game, seconds: number): void {
       p50: round(at(0.5)),
       p95: round(at(0.95)),
       max: round(sorted[sorted.length - 1] ?? 0),
+      maxAt: round(worstAt),
+      warmUpMax: round(warmUpMax),
       drawCallsMean: round(drawCalls / Math.max(1, frames)),
       drawCallsMax,
       visibleChunksMean: round(visible / Math.max(1, frames)),
