@@ -16,7 +16,7 @@ export function Shell() {
   return (
     <div class={styles.overlay}>
       <header class={styles.header}>
-        <Wordmark size={20} />
+        <Wordmark />
         <button
           type="button"
           class={styles.paletteButton}

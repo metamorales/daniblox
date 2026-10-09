@@ -9,15 +9,15 @@ import styles from './Wordmark.module.css';
  */
 
 export interface WordmarkProps {
-  /** Letter height in CSS pixels. The slab and gem scale with it. */
+  /** Letter height in CSS pixels. Left out, the surrounding CSS sets it. */
   size?: number;
 }
 
-export function Wordmark({ size = 16 }: WordmarkProps) {
+export function Wordmark({ size }: WordmarkProps) {
   return (
     <span
       class={styles.wordmark}
-      style={{ '--wordmark-size': `${String(size)}px` }}
+      style={size === undefined ? undefined : { '--wordmark-size': `${String(size)}px` }}
       role="img"
       aria-label="Daniblox"
     >

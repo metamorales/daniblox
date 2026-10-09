@@ -10,6 +10,7 @@
 }
 
 .header {
+  --wordmark-size: 20px;
   grid-column: 1;
   grid-row: 1;
   display: flex;
@@ -138,5 +139,14 @@
   .toast {
     grid-row: 2;
     align-self: start;
+  }
+
+  .header {
+    --wordmark-size: 13px;
+    gap: 8px;
+  }
+
+  .kbd {
+    display: none;
   }
 }
