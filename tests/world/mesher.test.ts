@@ -85,15 +85,35 @@ describe('greedy mesher face counts', () => {
     expect(meshOf(emptyWorld()).quadCount).toBe(0);
   });
 
-  it('merges a flat slab into one quad per side', () => {
+  it('merges a flat slab into one quad per visible side', () => {
     const world = emptyWorld();
     for (let x = 0; x < 4; x++) {
       for (let z = 0; z < 4; z++) world.set(x, 0, z, 1);
     }
-    // Top and bottom merge to one quad each; the four sides merge to one each.
+    // One quad for the top and one for each of the four sides. The underside
+    // rests on the solid ground below the world, so it is never emitted.
     const mesh = meshOf(world);
-    expect(mesh.quadCount).toBe(6);
-    expect(faceArea(mesh)).toBe(16 + 16 + 4 * 4);
+    expect(mesh.quadCount).toBe(5);
+    expect(faceArea(mesh)).toBe(16 + 4 * 4);
+  });
+
+  it('draws a seam face once, not once per neighbouring chunk', () => {
+    const world = emptyWorld();
+    // A wall in the last column of chunk (0,0). The first column of chunk
+    // (1,0) is air, so the wall's +x face sits exactly on the seam.
+    for (let y = 0; y < 3; y++) {
+      for (let z = 4; z < 8; z++) world.set(15, y, z, 1);
+    }
+    const left = world.chunks[0];
+    const right = world.chunks[1];
+    if (!left || !right) throw new Error('missing chunk');
+
+    // The face belongs to the block that owns it, which lives in chunk (0,0).
+    // Chunk (1,0) can see that block through its padding and must not claim it.
+    expect(meshChunk(world, left).quadCount).toBeGreaterThan(0);
+    expect(meshChunk(world, right).quadCount, 'the neighbour claimed a face it does not own').toBe(
+      0,
+    );
   });
 
   it('does not merge faces whose shading differs', () => {

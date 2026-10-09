@@ -11,9 +11,7 @@ export function Shell() {
       <header class={styles.header}>
         <Wordmark size={20} />
       </header>
-      <p class={styles.caption}>
-        Placeholder scene. Drag to orbit, scroll to zoom. Terrain and kits arrive next.
-      </p>
+      <p class={styles.caption}>Drag to orbit, scroll to zoom, W A S D to pan. Kits arrive next.</p>
     </div>
   );
 }

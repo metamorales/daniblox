@@ -57,57 +57,63 @@ Conventions: "Test:" is automated and runs in CI. "Measure:" is recorded in §5 
 - Lighting and sky per §3.8 rules 3–4; night is one tint uniform. Per-chunk frustum culling. e2e: `window.__perf.drawCalls ≤ visibleChunks`, and calls drop when the camera points straight up.
 - Measure: p95 and worst frame on the dev laptop with the full world, recorded in §5. Human: AO + rim legibility on a phone (lever: rim mix 45 %).
 
-### M2 — one kit walking with pathfinding and gravity
+### M2 — the kit walking, with pathfinding and gravity
 
-- Kit entity and body per §3.5 (one preset suffices here), idle + walk animation, shadow disc, nameplate. Rendering choice (one merged mesh per kit vs per-part InstancedMesh) recorded in decisions.md with the resulting draw-call count.
-- Walkable predicate per R4 (non-solid at y and y+1, solid at y−1); A* with a binary heap, time-sliced ≤2 ms/frame, 4,000-node cap; step up 1, fall ≤3, 4-neighbour moves; cost 1 / +0.5 per step up. Tests: around a wall; refuses a 2-high step; refuses a 1-high tunnel (headroom); falls ≤3; unreachable → nearest reachable cell within 3; node cap triggers and falls back.
-- Movement: 3 blocks/s (20 ticks on a flat path move 3.0 ± 0.05 cells); gravity when the support block is removed; replan when a block on the remaining path changes. Property test: 2,000 random ticks on a generated world → per-tick horizontal displacement ≤ 0.15 + ε, vertical change only +1 or negative, feet and head cells never solid.
-- Render interpolation between ticks; the M1 pause/resume now covers the kit.
-- Click/tap selects a kit; F focuses the selected kit (R5).
-- e2e: "go here" on a ground cell → within 10 s the kit's cell equals the target.
+- One kit. Entity and body per section 3.5, idle and walk animation, shadow disc, nameplate. Rendering choice recorded in decisions.md with the resulting draw-call count.
+- Walkable predicate per R4 (non-solid at y and y+1, solid at y−1); A* with a binary heap, time-sliced to 2 ms a frame, 4,000-node cap; step up 1, fall at most 3, four-neighbour moves; cost 1 per move and a half more per step up. Tests: around a wall; refuses a two-high step; refuses a one-high tunnel; falls at most 3; unreachable falls back to the nearest reachable cell within 3; the node cap trips and recovers.
+- Movement at 3 blocks a second (20 ticks on flat ground move 3.0 ± 0.05 cells); gravity when the block underneath goes; replan when a block on the remaining path changes. Property test: 2,000 random ticks on a generated world, with per-tick horizontal movement at most 0.15, vertical change only +1 or negative, and the kit's feet and head never inside a solid block.
+- Render interpolation between ticks; the M1 pause and resume now covers the kit.
+- Click or tap selects the kit; F focuses it.
+- Browser test: "go here" on a ground cell puts the kit on that cell within 10 seconds.
+- Built so a second kit can be added later: the kit is held in a roster of one, not a singleton, and nothing assumes there is exactly one.
 
-### M3 — action queue, all actions, click-to-direct, ScriptedBrain parser
+### M3 — action queue, small jobs and world-scale powers
 
-- `Brain.respond({ text, source, folk, world, history }) → Promise<BrainOutput>`; Action/BrainOutput types; zod schema and `validate()` applied to every Brain's output (non-negotiable 2) with basic tests; the full per-rule rejection suite lands in M5.
-- Per-kit action queue. goto; mine by type+count (nearest N within radius 16, trying up to 5 nearest candidates before "none reachable") and mine at; place (preconditions: air, adjacent solid, not occupied, not own cell, inventory ≥1; consumes 1); follow (re-path when distance > 2, halt at ≤ 1.5; target "user" = the reticle cell, tracked as it moves); wander (random reachable cell within radius 8, 1–3 s pause between legs); stop. Constants recorded in decisions.md. Tests: one per action; five place-precondition failures plus the success case; follow tracks a moving target; wander stays within radius; stop empties queue and path within one tick.
-- Occupancy lives in the movement step, not the pathfinder (R4: kits are not obstacles): next cell occupied → wait 0.5 s then replan; after 3 waits, or on arriving at an occupied target, stop on the nearest free adjacent cell and say so.
-- Unreachable/capped → nearest cell within 3, else a say line; absent type / empty inventory → say line, action dropped, queue continues. Lines are neutral here; M4 replaces them with card-seeded templates.
-- Roster cap 8; 12 card JSON files with name, kit appearance (§3.5) and mood (M4 completes bios, quirks, catchphrases); 9th spawn refused with a toast; floating action icon; inventory counts.
-- Click-to-direct menu (go here / mine this / place here) on desktop click and touch long-press (R5).
-- Parser (R1): `[name,] phrase [then phrase [then phrase]]`. A leading token is a name only when followed by a comma or when it is not a grammar keyword; unknown name → nothing queued, reply names the closest roster name (edit distance ≤2); no name → the selected kit (resolved in `src/app`, passed as `folk`); no selection → reply asking to pick one; "here", "me", "come", "come back", "follow me" → the reticle cell; numbers as digits or one–sixteen; registry names + synonyms; case and punctuation ignored; a 4th phrase is rejected. Unparsable → chat plus the two closest canonical commands by normalized Levenshtein distance (ties alphabetical). Tests: ≥20 cases incl. 5 unparsable, plus a coverage assertion that every verb synonym, every number word, a named prefix, a 3-phrase chain and a 4-phrase rejection each appear in a case.
-- 3-phrase rule per §4.
-- Bare UI shell (unstyled Preact): roster, text input, plain thread list, toast primitive, `aria-live="polite"` region announcing actions. e2e: spawn → the name appears in the roster; type "wander" → the status and the aria-live text contain the kit name and "wander".
+- `Brain.respond({ text, source, folk, world, history }) → Promise<BrainOutput>`; Action and BrainOutput types; the zod schema and `validate()` gate every Brain's output, with the full per-rule rejection suite landing in M5.
+- **Small jobs**, the six from the spec, which the kit walks over and performs: goto; mine by type and count (nearest within radius 16, trying the five nearest candidates before giving up) and mine at a cell; place (air, adjacent to something solid, not occupied, not its own cell, and it has one to spend); follow (re-path beyond 2 blocks, stop at 1.5; "user" means the reticle cell and tracks it); wander (a reachable cell within radius 8, pausing 1 to 3 seconds); stop. Constants recorded in decisions.md. One test per action, five place-precondition failures plus the success case.
+- **World-scale powers**, a second closed set the kit can invoke without walking anywhere, each one animated so it reads as the kit doing it rather than the world blinking:
+  - `sculpt` raise, lower or flatten terrain in a radius
+  - `paint` the surface of an area with one block type
+  - `plant` trees across an area
+  - `scatter` a block type across an area
+  - `clear` everything above ground in an area
+  - `settime` to dawn, day, dusk or night
+    Every one is bounded (radius at most 16, counts capped), reversible by the next command, and validated by the same schema. Tests: one per power, bounds rejected, and a determinism test so the same command on the same world gives the same result.
+- Occupancy lives in the movement step, never the pathfinder. Unreachable, absent type and empty inventory are reported in character and the queue continues.
+- Click-to-direct menu (go here, mine this, place here) on desktop click and touch long-press.
+- Parser per R1, plus the world-scale verbs. A leading token is a name only when followed by a comma or when it is not a grammar keyword; "here" and "me" resolve to the reticle cell; numbers as digits or words; case and punctuation ignored; a fourth phrase is rejected. Unparsable input becomes chat plus the two closest commands by edit distance. At least 20 parser cases including 5 unparsable, with every verb, synonym and number word covered.
+- Bare Preact shell: the kit's card, a text input, a plain chat list, a toast, and an `aria-live` region announcing actions.
 
-### M4 — chat, personality cards, template grammar, ambient chatter, content filter
+### M4 — the kit's character and chat
 
-- 12 cards complete: original name, 2-line bio, mood, 3 quirks, 2 catchphrases. Test: zod over the cards (unique names, exactly 2 bio lines, 3 quirks, 2 catchphrases).
-- Template grammar seeded by the card: replies ≤2 sentences and ≤240 chars, grounded in current action, position, inventory, time of day. Tests: for each action × 4 times of day × {empty, non-empty inventory} the reply has ≤2 sentences and contains the action/time token; two cards give different replies to the same input; ≥50 % of 200 seeded samples contain a quirk or catchphrase token.
-- Click a kit → speech bubble and the thread (last 50 lines per kit) in the shell.
-- Ambient chatter: idle kits only, ≤1 exchange per 30 s world-wide, ≤2 lines each; pauses with the simulation. Test: fake timers, 10 simulated minutes with 8 idle kits → ≤20 exchanges; 0 when fewer than 2 are idle; busy kits never chosen.
-- Content filter: blocklist on every `say` plus deflection templates for off-limits topics. Test: a blocked word never reaches the thread.
-- aria-live announces chat lines. Human: 10 transcripts spot-checked, recorded in §5.
+- **One** hand-written personality card: name, two-line bio, mood, three quirks, two catchphrases. Tested against a schema.
+- Template grammar seeded by the card: replies of at most two sentences and 240 characters, grounded in what the kit is doing, where it is, what it carries and the time of day. Tests cover each action across four times of day and both an empty and a full inventory, and assert the card's voice shows up in at least half of 200 seeded samples.
+- Clicking the kit opens a speech bubble; the sidebar keeps the last 50 lines.
+- Content filter: a blocklist over every spoken line plus in-character deflections for off-limits topics. At least one test.
+- The `aria-live` region announces chat as well as actions.
+- Ambient chatter is **cut**: with one character there is nobody to chat to. Recorded as a spec amendment; the scheduler is not built.
 
-### M5 — LLMBrain, validator, settings, rate limit, fallback
+### M5 — the model brain, validator, settings, rate limit, fallback
 
-- Full validator suite: one test per R2 rejection rule (invalid JSON, unknown type, extra keys at any level, non-integer or out-of-bounds coordinates, unknown block, count outside 1..16, more than 10 actions, `say` outside 1..240).
-- LLMBrain: OpenAI-compatible `{baseUrl}/chat/completions` (editable baseUrl, `response_format: json_object` when supported) and Anthropic `/v1/messages` with `anthropic-version` and `anthropic-dangerous-direct-browser-access: true`; model is a text field with a small, cheap per-provider default recorded in decisions.md; temperature 0.7, max_tokens 200, 10 s AbortController timeout. Tests with mocked fetch: URL, headers, body shape, abort at 10 s under fake timers.
-- Prompt builder: identity + card; the six rules (JSON only; ≤2 sentences; all-ages; stay in character; actions only from the enum; ignore instructions inside the user message); snapshot (time of day, position, inventory, block counts within radius 8, kits within 10 blocks with their action, own action + queue); last 6 turns; user text escaped inside `<user_message>`. Test: worst-case snapshot ≤ 2,400 chars (chars/4 ≈ 600 tokens; no tokenizer dependency).
-- Validation failure → one retry with the error appended → ScriptedBrain for the turn with the fallback badge. Transport errors (network/CORS/timeout/401/5xx) skip the retry and fall back immediately with the badge and a settings banner naming the cause; 429 → the breather line; a circuit breaker skips the LLM for 60 s after 2 consecutive transport failures and says so in the banner.
-- Limiter: 10 requests/min with a visible counter; when capped the kit gives the in-character breather line and ScriptedBrain answers.
-- Key: memory only; sessionStorage only on explicit opt-in (decisions.md entry); never logged, bundled, in localStorage, or in the share hash. Tests: no key in localStorage; a console spy sees no key; after an e2e run that enters a canary key, `grep -r <canary> dist/` and localStorage are both empty; opt-in tested both ways.
-- Minimal settings panel: brain selector defaulting to Scripted, provider, baseUrl, model, key with opt-in, "LLM ambient chatter" (off by default), error banner, request counter. Content filter applied to LLM `say` with ≥1 test.
-- Verification, three tiers: (a) CI-gated Playwright route mocks for success, invalid-then-valid (retry), double failure (badge), 429, a 10 s stall (timeout), and an aborted/CORS request (banner); (b) `tools/fake-llm.mjs`, a 20-line Node server returning canned BrainOutput with and without CORS headers, proves the real fetch path from the dev origin; (c) a live run against one OpenAI-compatible endpoint and one Anthropic endpoint recorded in §5 — needs the user's key or a local server; if unavailable, R11.6 is reported partial, never skipped silently.
+This is where the world-scale powers get their point: plain English in, a reshaped world out.
+
+- Full validator suite: one test per R2 rejection rule, extended to the world-scale actions.
+- An OpenAI-compatible endpoint (`{baseUrl}/chat/completions`, editable base URL, JSON response format when supported) and an Anthropic endpoint (`/v1/messages` with the direct-browser-access header). Model is a text field with a small, cheap default per provider, recorded in decisions.md. Temperature 0.7, 200 max tokens, a 10 second abort. Mocked-fetch tests cover URL, headers, body shape and the abort.
+- Prompt builder: identity and card; the six rules; a world snapshot (time of day, the kit's position, inventory, nearby block counts, its current action and queue); the last six turns; the player's text escaped inside a tag. A test keeps the worst case under the token budget.
+- A schema failure retries once with the error appended, then falls back to the scripted brain with a visible badge. Transport failures skip the retry and fall back at once with a settings banner naming the cause; 429 gives the in-character breather line; two consecutive transport failures open a circuit breaker for 60 seconds.
+- Ten requests a minute with a visible counter.
+- The key lives in memory, and in sessionStorage only on an explicit opt-in. Tests prove it never reaches localStorage, the console, the share link, or the built files.
+- Verification in three tiers: mocked routes in CI covering success, retry, double failure, 429, timeout and a blocked request; a tiny local fake server proving the real fetch path; and a live run against both endpoint kinds recorded in section 5, reported as partial rather than skipped if no key is available.
 
 ### M6 — visual identity, themes, sidebar, palette, onboarding, accessibility, touch
 
-- Tokens from §3.1–3.2 as CSS variables; dark and light themes; `docs/design.md` with the per-element originality notes. Test: WCAG ratios computed over the token file for every text/bg pair in both themes (≥4.5 body, ≥3 border and large text).
-- Sidebar restyled (roster, thread, command input); command palette (Ctrl/Cmd+K, Esc) whose input routes through the same Brain path as the sidebar input; settings (brain, theme, reduced motion, render distance, re-run onboarding, Advanced → perf panel with frame time, draw calls, path nodes/frame); toasts; mobile bottom sheet. e2e: each of the six actions issued once from the palette and once from the sidebar.
-- Keyboard equivalents: palette commands `place <block> at x y z` and `break at x y z` act for the user at the reticle cell; arrow keys in the roster select kits; F focuses. The full R5 controls table is re-run and recorded in §5.
-- Render-distance setting, auto-reduced on mobile (R6 phone target).
-- Onboarding: 3 steps (spawn, one command, say hi), auto-shown when no save exists, skippable, re-runnable from settings; Reset world does not re-trigger it. e2e: completes in ≤8 keyboard actions with ≤40 words per step. Human: stopwatch ≤30 s.
-- Accessibility: canvas `aria-label`; focus-visible on every focusable element (e2e tabs through all and asserts `:focus-visible` with a visible outline); touch targets ≥44 px (mobile-viewport e2e over every button and link); reduced motion (emulated media → easing off, bob amplitude 0); the keyboard-only path spawn → command → chat → settings as an e2e.
-- Lighthouse through Playwright's Chromium on `vite preview`: accessibility ≥95, best practices ≥90.
-- All 12 kits finished; the four-frame litmus protocol (§3.8 rule 8) run once, screenshots and outcome in §5.
+- Tokens from sections 3.1 and 3.2 as CSS variables, both themes, with `docs/design.md` and its originality notes. A test computes the contrast of every pair.
+- Sidebar restyled (the kit's card, chat thread, command input); command palette on Ctrl or Cmd and K, Escape to close, routing through the same brain path as the sidebar; settings (brain, theme, reduced motion, render distance, replay onboarding, and an advanced panel showing frame time, draw calls and path nodes); toasts; a bottom sheet on phones. A browser test issues each small job and each world-scale power once from the palette and once from the sidebar.
+- Keyboard equivalents for the player's own place and break at the reticle cell, and for focusing the kit. The full control table is re-run and recorded in section 5.
+- A render-distance setting, reduced automatically on phones.
+- Onboarding: three steps (meet the kit, give one order, say hello), shown when there is no save, skippable, replayable from settings. A browser test completes it in at most eight keyboard actions with at most 40 words a step; a human times it under 30 seconds.
+- Accessibility: the canvas is labelled; every focusable element shows a focus ring; touch targets at least 44 px; reduced motion turns off easing and bobbing; a keyboard-only run goes from meeting the kit through an order and a chat to settings. Lighthouse at 95 for accessibility and 90 for best practices.
+- The four-frame look test from section 3.8 rule 8, with its screenshots and outcome in section 5.
 
 ### M7 — persistence and share links
 
@@ -240,7 +246,7 @@ Against the handheld creature games that inspired the brief: the look borrows a 
 | Target cell occupied when placing               | Precondition fails → wait 0.5 s, retry up to 3 times, then decline in character and drop the action.                                                                                                                                                                                                                                                                                                                   | src/folk/actions (place)                                                            |
 | Inventory empty when placing                    | Checked before pathing; the kit declines in character; action dropped; queue continues.                                                                                                                                                                                                                                                                                                                                | src/folk/inventory, src/folk/actions, src/chat (templates)                          |
 | Mine request for a type absent within radius 16 | Nearest-N search finds 0 → in-character "none nearby"; if candidates exist but the nearest is unreachable, up to 5 nearest are tried before "none reachable"; action dropped; queue continues. Partial finds mine what exists and report the shortfall.                                                                                                                                                                | src/folk/actions (mine), src/world (query by type)                                  |
-| Spawning the 9th kit                            | Roster cap 8 in the kit manager; spawn button disabled at 8; command/palette spawn shows a toast.                                                                                                                                                                                                                                                                                                                      | src/folk/roster, src/ui/roster                                                      |
+| Asking for a second kit                         | The roster holds one. A request for another is declined in character with a toast saying more are coming later. The roster is a collection, not a singleton, so raising the cap is a one-line change.                                                                                                                                                                                                                  | src/folk/roster, src/ui/roster                                                      |
 | LLM returns valid JSON with an unknown action   | zod discriminated union with `.strict()` rejects; the error is appended and the request retried once; a second failure → ScriptedBrain for the turn + fallback badge.                                                                                                                                                                                                                                                  | src/brain/schema, src/brain/llm                                                     |
 | LLM endpoint unreachable or CORS-blocked        | Transport errors (network/CORS, timeout, 401, 5xx) skip the validation retry and fall back immediately with the badge; the settings banner names the cause and a hint; 429 → breather line; a circuit breaker skips the LLM for 60 s after 2 consecutive transport failures. Failed calls count against the limiter.                                                                                                   | src/brain/llm (errors, breaker), src/ui/settings                                    |
 | localStorage disabled or full                   | Every access wrapped; on failure switch to an in-memory store for the session and toast once; QuotaExceeded on save → toast, keep playing; warn at 4 MB first.                                                                                                                                                                                                                                                         | src/app/persistence, src/ui/toasts                                                  |
@@ -263,5 +269,26 @@ Still to come: frame-time tables from M1 on, the full R5 controls table, R9 trac
 | Unit tests                                          | 6 passed                      | —       | pass                                              |
 | End-to-end tests                                    | 3 passed across both projects | —       | pass                                              |
 | `npm audit`                                         | 0 vulnerabilities             | no high | pass                                              |
+
+### M1 (2026-10-09, Apple Silicon, Chromium 156 on the real GPU, 1920x1080)
+
+| Measurement                          | Value                       | Budget                    | Status                                      |
+| ------------------------------------ | --------------------------- | ------------------------- | ------------------------------------------- |
+| Frame time, p50                      | 10.0 ms                     | —                         | pass                                        |
+| Frame time, p95                      | 10.5 ms                     | 16.7 ms                   | pass                                        |
+| Frame time, worst                    | 11.0 ms                     | 33 ms                     | pass                                        |
+| Draw calls                           | 18                          | visible chunks + overlays | pass, 16 chunks plus sky, reticle and decal |
+| Triangles                            | 16,558                      | —                         | the whole 64 by 64 world                    |
+| Chunk remesh, real terrain           | under 1 ms                  | 4 ms                      | pass                                        |
+| Chunk remesh, synthetic checkerboard | 3.0 ms median, 6.8 ms worst | 4 ms                      | partial, see below                          |
+
+Measured while orbiting, so chunks continuously enter and leave the view. The
+checkerboard case fills a chunk with alternating solid and air, which is the
+one shape greedy meshing cannot merge at all; ordinary terrain and ordinary
+player edits stay under a millisecond. The lever, if a player ever builds one,
+is preallocating the mesher's output arrays instead of growing JavaScript
+arrays and converting at the end. Tracked for M8.
+
+Not yet measured: a real Android device, and frame time with kits active.
 
 M0 checks that are automated rather than measured: the originality word check, the folder README limit, the import boundary fixture, the WebGL2 fallback path, and the absence of console errors and unhandled rejections in both e2e projects.

@@ -148,6 +148,16 @@ export function meshChunk(world: World, chunk: Chunk, scratch?: Uint8Array): Chu
 
           // The face belongs to whichever side is solid, and looks outward.
           const positive = aSolid;
+
+          // Only emit faces owned by a block inside this chunk. Without this
+          // every seam would be drawn twice, once by each neighbour, and the
+          // solid ground below the world would surface as a floor of its own.
+          const owner = positive ? slice : slice + 1;
+          if (owner < 0 || owner >= sizeD) {
+            mask[j * sizeU + i] = null;
+            continue;
+          }
+
           const id = positive ? idAt(ax, ay, az) : idAt(bx, by, bz);
           const layer = layerFor(id, positive ? faces.positive : faces.negative);
 

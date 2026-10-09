@@ -1,206 +1,140 @@
 /**
- * M0 placeholder scene: the sky gradient, one lit cube, and an orbit camera.
+ * The render side of the world: terrain meshes, sky, camera and the draw step.
  *
- * The sky shader and the orbit maths are written to survive into M1, where
- * terrain, the ground reticle and the full control set from spec R5 arrive.
+ * This module owns nothing about simulation. The clock lives in src/app/loop
+ * and this only samples it.
  */
-import {
-  BackSide,
-  BoxGeometry,
-  Color,
-  DirectionalLight,
-  HemisphereLight,
-  Mesh,
-  MeshLambertMaterial,
-  PerspectiveCamera,
-  Scene,
-  ShaderMaterial,
-  SphereGeometry,
-  WebGLRenderer,
-} from 'three';
+import { Group, Scene, WebGLRenderer } from 'three';
+import { LAYER } from '../world/blocks';
+import { WORLD_X, WORLD_Y, WORLD_Z, World } from '../world/chunks';
+import { generate } from '../world/terrain';
+import { loadAtlas } from './atlas';
+import { ChunkMeshes } from './chunkMeshes';
+import { Interaction } from './interaction';
+import { OrbitCamera } from './orbitCamera';
+import { Sky, skyAt } from './sky';
+import { VoxelMaterial } from './voxelMaterial';
 
-const SKY_ZENITH = '#8fd6f0';
-const SKY_HORIZON = '#fdf3e2';
-const SKY_GROUND = '#e8c9a8';
-const CUBE_COLOUR = '#4f8fd8';
-const KEY_LIGHT = '#fff1dc';
-const GROUND_BOUNCE = '#e6a0a4';
+export interface PerfSnapshot {
+  frameMs: number;
+  drawCalls: number;
+  triangles: number;
+  visibleChunks: number;
+  totalChunks: number;
+  remeshMs: number;
+  pendingChunks: number;
+}
 
-const MIN_PITCH = 0.12;
-const MAX_PITCH = Math.PI / 2 - 0.02;
-const BASE_FOV = 50;
-const MAX_FOV = 82;
-const MIN_RADIUS = 2.5;
-const MAX_RADIUS = 20;
-
-export interface SceneHandle {
+export interface WorldView {
+  readonly world: World;
+  readonly orbit: OrbitCamera;
+  readonly perf: PerfSnapshot;
   /** Frames drawn since start. The e2e suite reads this to prove the loop runs. */
-  readonly frames: number;
+  frames: number;
+  render(dayPhase: number, frameMs: number): void;
+  resize(): void;
   dispose(): void;
 }
 
-interface Orbit {
-  yaw: number;
-  pitch: number;
-  radius: number;
-}
-
-function skyMaterial(): ShaderMaterial {
-  return new ShaderMaterial({
-    side: BackSide,
-    depthWrite: false,
-    uniforms: {
-      zenith: { value: new Color(SKY_ZENITH) },
-      horizon: { value: new Color(SKY_HORIZON) },
-      ground: { value: new Color(SKY_GROUND) },
-    },
-    vertexShader: /* glsl */ `
-      varying vec3 vLocal;
-      void main() {
-        vLocal = position;
-        gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
-      }
-    `,
-    fragmentShader: /* glsl */ `
-      uniform vec3 zenith;
-      uniform vec3 horizon;
-      uniform vec3 ground;
-      varying vec3 vLocal;
-      void main() {
-        // A god-view camera spends most of its time looking below the horizon,
-        // so the band under it carries its own stop instead of being flat.
-        float h = normalize(vLocal).y * 0.5 + 0.5;
-        vec3 sky = h < 0.5
-          ? mix(ground, horizon, smoothstep(0.30, 0.50, h))
-          : mix(horizon, zenith, smoothstep(0.50, 0.66, h));
-        gl_FragColor = vec4(sky, 1.0);
-        #include <colorspace_fragment>
-      }
-    `,
-  });
-}
-
-function applyCamera(camera: PerspectiveCamera, orbit: Orbit): void {
-  const { yaw, pitch, radius } = orbit;
-  camera.position.set(
-    radius * Math.cos(pitch) * Math.sin(yaw),
-    radius * Math.sin(pitch),
-    radius * Math.cos(pitch) * Math.cos(yaw),
-  );
-  camera.lookAt(0, 0, 0);
-}
-
-export function createScene(canvas: HTMLCanvasElement): SceneHandle {
+export async function createWorldView(
+  canvas: HTMLCanvasElement,
+  atlasUrl: string,
+  seed: number,
+): Promise<WorldView> {
   const renderer = new WebGLRenderer({ canvas, antialias: false });
   renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
 
   const scene = new Scene();
-  const camera = new PerspectiveCamera(BASE_FOV, 1, 0.1, 1000);
-  const orbit: Orbit = { yaw: 0.9, pitch: 0.3, radius: 6.5 };
+  const sky = new Sky();
+  scene.add(sky.mesh);
 
-  const sky = new Mesh(new SphereGeometry(400, 24, 16), skyMaterial());
-  sky.frustumCulled = false;
-  scene.add(sky);
+  const world = new World(seed);
+  generate(world);
 
-  const cube = new Mesh(
-    new BoxGeometry(2, 2, 2),
-    new MeshLambertMaterial({ color: new Color(CUBE_COLOUR) }),
-  );
-  scene.add(cube);
+  const { texture } = await loadAtlas(atlasUrl);
+  const material = new VoxelMaterial({ tiles: texture, unlitLayer: LAYER.gem });
+  const chunks = new ChunkMeshes(world, material);
+  scene.add(chunks.group);
+  const initialMeshMs = chunks.rebuildAll();
 
-  const key = new DirectionalLight(new Color(KEY_LIGHT), 2.4);
-  key.position.set(4, 7, 3);
-  scene.add(key);
-  scene.add(new HemisphereLight(new Color(SKY_ZENITH), new Color(GROUND_BOUNCE), 1.4));
+  const orbit = new OrbitCamera(canvas, { minX: 0, maxX: WORLD_X, minZ: 0, maxZ: WORLD_Z });
+  orbit.setTarget(WORLD_X / 2, WORLD_Y * 0.42, WORLD_Z / 2);
+
+  const effects = new Group();
+  effects.name = 'effects';
+  scene.add(effects);
+
+  const interaction = new Interaction(canvas, world, orbit.camera, chunks.group, effects);
+  scene.add(interaction.reticle);
+  scene.add(interaction.decal);
+
+  const perf: PerfSnapshot = {
+    frameMs: 0,
+    drawCalls: 0,
+    triangles: 0,
+    visibleChunks: 0,
+    totalChunks: world.chunks.length,
+    remeshMs: initialMeshMs,
+    pendingChunks: 0,
+  };
 
   function resize(): void {
     const width = canvas.clientWidth || window.innerWidth;
     const height = canvas.clientHeight || window.innerHeight;
     renderer.setSize(width, height, false);
-
-    const aspect = width / Math.max(height, 1);
-    camera.aspect = aspect;
-    // A fixed vertical field of view crops the scene badly on a phone held
-    // upright, so portrait viewports widen it to keep the same horizontal view.
-    camera.fov =
-      aspect >= 1
-        ? BASE_FOV
-        : Math.min(
-            MAX_FOV,
-            (180 / Math.PI) * 2 * Math.atan(Math.tan((BASE_FOV * Math.PI) / 360) / aspect),
-          );
-    camera.updateProjectionMatrix();
+    orbit.resize(width, height);
   }
   resize();
   window.addEventListener('resize', resize);
 
-  // --- orbit input (the M1 controller grows from here) ---
-  let dragging = false;
-  let lastX = 0;
-  let lastY = 0;
-
-  function onPointerDown(event: PointerEvent): void {
-    dragging = true;
-    lastX = event.clientX;
-    lastY = event.clientY;
-    canvas.setPointerCapture(event.pointerId);
-  }
-  function onPointerMove(event: PointerEvent): void {
-    if (!dragging) return;
-    orbit.yaw -= (event.clientX - lastX) * 0.008;
-    orbit.pitch = Math.min(
-      MAX_PITCH,
-      Math.max(MIN_PITCH, orbit.pitch + (event.clientY - lastY) * 0.006),
-    );
-    lastX = event.clientX;
-    lastY = event.clientY;
-  }
-  function onPointerUp(event: PointerEvent): void {
-    dragging = false;
-    if (canvas.hasPointerCapture(event.pointerId)) canvas.releasePointerCapture(event.pointerId);
-  }
-  function onWheel(event: WheelEvent): void {
-    event.preventDefault();
-    orbit.radius = Math.min(MAX_RADIUS, Math.max(MIN_RADIUS, orbit.radius + event.deltaY * 0.01));
-  }
-
-  canvas.addEventListener('pointerdown', onPointerDown);
-  canvas.addEventListener('pointermove', onPointerMove);
-  canvas.addEventListener('pointerup', onPointerUp);
-  canvas.addEventListener('pointercancel', onPointerUp);
-  canvas.addEventListener('wheel', onWheel, { passive: false });
-
-  const stillness = window.matchMedia('(prefers-reduced-motion: reduce)');
-
-  let frames = 0;
-  let raf = 0;
-  let last = performance.now();
-
-  function frame(now: number): void {
-    const delta = Math.min((now - last) / 1000, 0.1);
-    last = now;
-    if (!stillness.matches) cube.rotation.y += delta * 0.35;
-    applyCamera(camera, orbit);
-    renderer.render(scene, camera);
-    frames++;
-    handle.frames = frames;
-    raf = requestAnimationFrame(frame);
-  }
-
-  const handle = {
+  const view: WorldView = {
+    world,
+    orbit,
+    perf,
     frames: 0,
+
+    render(dayPhase: number, frameMs: number): void {
+      const palette = skyAt(dayPhase);
+      sky.apply(palette);
+      material.setNightTint(palette.tint);
+      material.setSkyColours(palette.zenith, palette.horizon);
+
+      orbit.update(frameMs);
+      // The sky rides with the camera, so its gradient never clips or moves.
+      sky.mesh.position.copy(orbit.camera.position);
+
+      // The reticle marks the cell the camera orbits, resting on the ground
+      // there. This is the cell that "here" and "me" will refer to.
+      const cell = orbit.targetCell();
+      interaction.placeReticle(cell.x, cell.z, world.surfaceHeight(cell.x, cell.z));
+      interaction.update(frameMs);
+
+      const remesh = chunks.update();
+      const visible = chunks.cull(orbit.camera);
+      renderer.render(scene, orbit.camera);
+
+      perf.frameMs = frameMs;
+      perf.drawCalls = renderer.info.render.calls;
+      perf.triangles = renderer.info.render.triangles;
+      perf.visibleChunks = visible;
+      perf.remeshMs = remesh.milliseconds;
+      perf.pendingChunks = remesh.pending;
+      view.frames++;
+    },
+
+    resize,
+
     dispose(): void {
-      cancelAnimationFrame(raf);
       window.removeEventListener('resize', resize);
-      canvas.removeEventListener('pointerdown', onPointerDown);
-      canvas.removeEventListener('pointermove', onPointerMove);
-      canvas.removeEventListener('pointerup', onPointerUp);
-      canvas.removeEventListener('pointercancel', onPointerUp);
-      canvas.removeEventListener('wheel', onWheel);
+      interaction.dispose();
+      orbit.dispose();
+      chunks.dispose();
+      sky.dispose();
+      material.dispose();
+      texture.dispose();
       renderer.dispose();
     },
   };
 
-  raf = requestAnimationFrame(frame);
-  return handle;
+  return view;
 }

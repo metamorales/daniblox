@@ -59,11 +59,10 @@ describe('block access', () => {
     }
   });
 
-  it('returns air outside the world instead of throwing', () => {
+  it('returns air beside and above the world instead of throwing', () => {
     const world = new World(1);
     const outside: [number, number, number][] = [
       [-1, 0, 0],
-      [0, -1, 0],
       [0, 0, -1],
       [64, 0, 0],
       [0, 32, 0],
@@ -71,6 +70,15 @@ describe('block access', () => {
     ];
     for (const [x, y, z] of outside) expect(world.get(x, y, z)).toBe(AIR);
     expect(world.set(-1, 0, 0, 1)).toBe(false);
+  });
+
+  it('treats everything below the floor as solid ground', () => {
+    const world = new World(1);
+    // Downward faces of the bottom row are never visible, and the bottom row
+    // should read as resting on something rather than floating.
+    expect(isSolid(world.get(0, -1, 0))).toBe(true);
+    expect(isSolid(world.get(30, -5, 30))).toBe(true);
+    expect(world.set(0, -1, 0, 1)).toBe(false);
   });
 
   it('marks the neighbour chunk dirty when a block sits on a seam', () => {

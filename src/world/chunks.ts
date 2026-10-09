@@ -8,6 +8,9 @@
 
 import { AIR } from './blocks';
 
+/** Stand-in for the solid ground under the world. Never rendered, never written. */
+const BEDROCK = 3;
+
 export const CHUNK_X = 16;
 export const CHUNK_Y = 32;
 export const CHUNK_Z = 16;
@@ -21,9 +24,15 @@ export const WORLD_X = CHUNK_X * CHUNKS_X;
 export const WORLD_Y = CHUNK_Y;
 export const WORLD_Z = CHUNK_Z * CHUNKS_Z;
 
-/** Local index inside a chunk. Y varies fastest so vertical columns are contiguous. */
+/**
+ * Local index inside a chunk, ordered as horizontal slabs stacked in y.
+ *
+ * A slab of terrain is mostly one block type, so this ordering runs far longer
+ * than a column-major one and makes the run-length encoding in M7 roughly
+ * three times smaller.
+ */
 export function localIndex(x: number, y: number, z: number): number {
-  return (x * CHUNK_Z + z) * CHUNK_Y + y;
+  return (y * CHUNK_Z + z) * CHUNK_X + x;
 }
 
 export interface Chunk {
@@ -60,8 +69,16 @@ export class World {
     return x >= 0 && y >= 0 && z >= 0 && x < WORLD_X && y < WORLD_Y && z < WORLD_Z;
   }
 
-  /** Block id at world coordinates. Outside the world is air. */
+  /**
+   * Block id at world coordinates.
+   *
+   * Beyond the sides and above the ceiling is air, so the world reads as a
+   * diorama with a visible soil cross-section. Below the floor is solid: that
+   * hides every downward face, which nothing can ever see, and lets ambient
+   * occlusion ground the bottom row instead of leaving it floating.
+   */
   get(x: number, y: number, z: number): number {
+    if (y < 0) return BEDROCK;
     if (!this.inBounds(x, y, z)) return AIR;
     const chunk = this.chunks[World.chunkIndex(x >> 4, z >> 4)];
     if (!chunk) return AIR;
@@ -97,6 +114,14 @@ export class World {
   private markDirty(cx: number, cz: number): void {
     const neighbour = this.chunkAt(cx, cz);
     if (neighbour) neighbour.dirty = true;
+  }
+
+  /** Height of the topmost solid block in a column, or -1 if the column is empty. */
+  surfaceHeight(x: number, z: number): number {
+    for (let y = WORLD_Y - 1; y >= 0; y--) {
+      if (this.get(x, y, z) !== AIR) return y;
+    }
+    return -1;
   }
 
   /** Flat copy of every chunk in index order, for saving and for hashing. */

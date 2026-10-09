@@ -32,6 +32,7 @@ export default tseslint.config(
       'coverage/**',
       'playwright-report/**',
       'test-results/**',
+      '.scratch/**',
       'tests/lint/**',
     ],
   },
