@@ -510,7 +510,7 @@ export class ActionQueue {
         isSolid(world.get(cell.x, cell.y + 1, cell.z));
       if (!buried) continue;
       const top = world.surfaceHeight(cell.x, cell.z);
-      kit.teleport({ x: cell.x, y: top + 1, z: cell.z });
+      kit.lift(top + 1);
       this.context.report(kit, 'lifted');
     }
   }

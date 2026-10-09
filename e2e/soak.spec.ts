@@ -38,15 +38,16 @@ test('runs every job for a while without clipping, teleporting or overspending',
     async ({ seconds, orders }) => {
       const app = window.__app;
       const game = window.__game;
+      const loop = window.__loop;
       const kit = app?.kits[0];
-      if (!app || !game || !kit) return { problems: ['no app'], samples: 0 };
+      if (!app || !game || !loop || !kit) return { problems: ['no app'], samples: 0 };
 
       const problems: string[] = [];
       const started = performance.now();
       let lastOrder = -Infinity;
       let order = 0;
       let pulled = false;
-      let last = { x: kit.position.x, z: kit.position.z, t: started };
+      let last = { x: kit.position.x, z: kit.position.z, ticks: loop.ticks };
       let samples = 0;
 
       while (performance.now() - started < seconds * 1000) {
@@ -72,13 +73,17 @@ test('runs every job for a while without clipping, teleporting or overspending',
         const head = app.world.get(c.x, c.y + 1, c.z);
         if (feet !== 0 || head !== 0) problems.push(`clipped at ${c.x},${c.y},${c.z}`);
 
-        const dt = (now - last.t) / 1000;
+        // Speed against the simulation's own clock: frames bunch up on a
+        // loaded machine, but she may never cover more than three blocks a
+        // second of simulated time.
+        const ticks = loop.ticks - last.ticks;
         const moved = Math.hypot(kit.position.x - last.x, kit.position.z - last.z);
-        // Three blocks a second, with room for a frame's worth of jitter.
-        if (dt > 0 && moved / dt > 4.5 && moved > 0.5) {
-          problems.push(`teleported ${moved.toFixed(2)} blocks in ${(dt * 1000).toFixed(0)} ms`);
+        if (ticks > 0 && moved / (ticks * 0.05) > 3.6) {
+          problems.push(`teleported ${moved.toFixed(2)} blocks in ${String(ticks)} ticks`);
+        } else if (ticks === 0 && moved > 0.001) {
+          problems.push(`moved ${moved.toFixed(2)} blocks between ticks`);
         }
-        last = { x: kit.position.x, z: kit.position.z, t: now };
+        last = { x: kit.position.x, z: kit.position.z, ticks: loop.ticks };
 
         const perf = window.__perf;
         if (perf && perf.drawCalls > perf.visibleChunks + app.kits.length * 7 + 4) {

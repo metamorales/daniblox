@@ -136,6 +136,15 @@ export class Kit {
     this.state = 'idle';
   }
 
+  /** Raise or drop the kit in place, keeping exactly where she stands in the column. */
+  lift(y: number): void {
+    this.stop();
+    this.position.y = y;
+    this.previous.y = y;
+    this.activity = null;
+    this.progress = null;
+  }
+
   /** Put the kit somewhere at once, with no walk: a load or a reset. */
   teleport(cell: Cell): void {
     this.stop();

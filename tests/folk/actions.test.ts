@@ -366,6 +366,9 @@ describe('world-scale powers', () => {
     expect(h.world.get(after.x, after.y, after.z)).toBe(AIR);
     expect(h.world.get(after.x, after.y + 1, after.z)).toBe(AIR);
     expect(after.y).toBeGreaterThan(before.y);
+    // Straight up, never sideways.
+    expect(after.x).toBe(before.x);
+    expect(after.z).toBe(before.z);
     expect(notes(h)).toContain('lifted');
   });
 
