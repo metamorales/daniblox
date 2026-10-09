@@ -2,25 +2,57 @@
   position: fixed;
   inset: 0;
   pointer-events: none;
-  display: flex;
-  flex-direction: column;
-  justify-content: space-between;
+  display: grid;
+  grid-template-columns: 1fr auto;
+  grid-template-rows: auto 1fr auto;
+  gap: 12px;
   padding: 16px;
 }
 
 .header {
+  grid-column: 1;
+  grid-row: 1;
   display: flex;
-  align-items: center;
-  gap: 12px;
+  align-items: flex-start;
 }
 
-.caption {
+.panel {
+  grid-column: 2;
+  grid-row: 1 / span 3;
+  display: flex;
+  align-items: flex-start;
+  justify-content: flex-end;
+}
+
+.toast {
+  grid-column: 1;
+  grid-row: 3;
+  justify-self: start;
+  align-self: end;
   pointer-events: auto;
-  align-self: flex-start;
   margin: 0;
-  padding: 6px 10px;
+  padding: 8px 12px;
   border: 2px solid var(--border);
   background: var(--surface);
-  color: var(--muted);
-  font-size: 14px;
+  color: var(--text);
+  font-size: 15px;
+}
+
+/* On a phone the panel becomes a sheet along the bottom. M6 makes it a real
+   bottom sheet with a drag handle. */
+@media (max-width: 720px) {
+  .overlay {
+    grid-template-columns: 1fr;
+    grid-template-rows: auto 1fr auto;
+  }
+
+  .panel {
+    grid-column: 1;
+    grid-row: 3;
+    justify-content: stretch;
+  }
+
+  .panel > * {
+    width: 100%;
+  }
 }

@@ -147,3 +147,20 @@ Rejected: dropping the reticle or the nameplate to satisfy the arithmetic.
 What: a pathfinding fixture that builds a small floor and walls it off does not actually wall anything off.
 Why: the ground below the world is solid, so a kit walks off the edge of the test floor, crosses on the bedrock and climbs back up the far side. Two tests were asserting the wrong thing until this surfaced.
 How to apply: walls and ceilings in pathfinding tests span the full 64 cells.
+
+## M3-1 — Articles are not counts (2026-10-09)
+
+What: "a" and "an" are filler, not the number one.
+Why: with them in the number table, "plant a forest here" asked for exactly one tree. "Grab a gem" still gives one, because a missing count defaults to one anyway.
+Rejected: special-casing the plant verb, which would leave the same trap for every other verb.
+
+## M3-2 — A bare leading word is a name only if it is not a verb (2026-10-09)
+
+What: addressing a kit by name without a comma works only when the name is not something the grammar already understands.
+Why: a kit called Scatter would otherwise swallow "scatter gems here" and leave the parser with "gems here".
+Rejected: requiring a comma always, which makes the common case fussier than it needs to be.
+
+## M3-3 — Block names are matched in the plural too (2026-10-09)
+
+What: a trailing "s" is stripped when a word fails to match a block.
+Why: people type "scatter gems", not "scatter gem", and the whole point of the grammar is that it accepts what someone would actually write.

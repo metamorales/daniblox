@@ -35,8 +35,10 @@ export interface WorldView {
   readonly kits: readonly Kit[];
   /** One simulation step, driven by the fixed-step loop. */
   tick(): void;
-  /** Send a kit to a cell. The proper click-to-direct menu lands in M3. */
+  /** Send a kit to a cell. */
   sendTo(kitId: string, cell: { x: number; y: number; z: number }): void;
+  /** The block under the pointer, which is what "this" means in a command. */
+  pointedAt(): { x: number; y: number; z: number } | null;
   /** Frames drawn since start. The e2e suite reads this to prove the loop runs. */
   frames: number;
   render(dayPhase: number, frameMs: number, alpha?: number): void;
@@ -127,6 +129,11 @@ export async function createWorldView(
 
     sendTo(kitId, cell): void {
       kits.find((kit) => kit.id === kitId)?.goTo(world, cell);
+    },
+
+    pointedAt(): { x: number; y: number; z: number } | null {
+      const target = interaction.target;
+      return target ? { x: target.x, y: target.y, z: target.z } : null;
     },
 
     render(dayPhase: number, frameMs: number, alpha = 1): void {

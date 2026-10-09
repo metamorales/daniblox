@@ -1,9 +1,12 @@
+import { Sidebar } from './Sidebar';
 import styles from './Shell.module.css';
 import { Wordmark } from './Wordmark';
+import { announcement, toast } from './state';
 
 /**
- * M0 shell: the wordmark over the canvas and a note about what this scene is.
- * The sidebar, roster, chat thread and command palette arrive in M3 and M6.
+ * The overlay above the canvas: the wordmark, Luciana's panel, a toast, and a
+ * polite live region so anyone not watching the world still hears what she is
+ * doing.
  */
 export function Shell() {
   return (
@@ -11,7 +14,20 @@ export function Shell() {
       <header class={styles.header}>
         <Wordmark size={20} />
       </header>
-      <p class={styles.caption}>Drag to orbit, scroll to zoom, W A S D to pan. Kits arrive next.</p>
+
+      <div class={styles.panel}>
+        <Sidebar />
+      </div>
+
+      {toast.value && (
+        <p class={styles.toast} role="status">
+          {toast.value}
+        </p>
+      )}
+
+      <p class="visually-hidden" aria-live="polite">
+        {announcement.value}
+      </p>
     </div>
   );
 }

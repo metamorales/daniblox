@@ -1,6 +1,7 @@
 import { render } from 'preact';
 import { createWorldView, type WorldView } from '../render/scene';
 import { Shell } from '../ui/Shell';
+import { createGame } from './game';
 import { FixedLoop } from './loop';
 
 declare global {
@@ -11,6 +12,8 @@ declare global {
     __perf?: WorldView['perf'];
     /** The simulation clock, so tests and the settings panel can move the day. */
     __loop?: FixedLoop;
+    /** Command entry, so the e2e suite can type as the player would. */
+    __game?: { send(text: string): void };
   }
 }
 
@@ -53,11 +56,14 @@ export async function start(): Promise<void> {
     startPhase: 0.22,
     tick: () => {
       view.tick();
+      game.tick();
     },
     render: (alpha, frameMs) => {
       view.render(loop.dayPhase, frameMs, alpha);
     },
   });
+  const game = createGame(view, loop);
+  window.__game = game;
   window.__loop = loop;
   loop.bindVisibility();
   loop.run();

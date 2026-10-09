@@ -61,14 +61,14 @@ const NUMBER_WORDS: Record<string, number> = {
   fourteen: 14,
   fifteen: 15,
   sixteen: 16,
-  a: 1,
-  an: 1,
   couple: 2,
   few: 3,
 };
 
 /** Words that carry no meaning here and are dropped before matching. */
 const FILLER = new Set([
+  'a',
+  'an',
   'please',
   'could',
   'can',
