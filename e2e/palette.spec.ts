@@ -40,6 +40,12 @@ test.describe('the command palette', () => {
   });
 
   test('breaks and places a block for the player at the reticle', async ({ page }) => {
+    // Away from Luciana: she spawns at the orbit point, and breaking the
+    // block under her feet would drop her into the cell the tile wants.
+    await page.evaluate(() => window.__app?.orbit.setTarget(20, 12, 20));
+    await page.waitForFunction(() => window.__app?.orbit.targetCell().x === 20, undefined, {
+      timeout: 5000,
+    });
     const start = await solidCount(page);
 
     await page.keyboard.press('Control+k');
