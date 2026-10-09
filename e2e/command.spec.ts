@@ -54,6 +54,26 @@ test.describe('talking to Luciana', () => {
       .toBeGreaterThan(barkBefore);
   });
 
+  test('builds a litter box when asked, from her pockets', async ({ page }) => {
+    const bark = () =>
+      page.evaluate(() => {
+        let n = 0;
+        for (const b of window.__app?.world.toBytes() ?? []) if (b === 5) n++;
+        return n;
+      });
+    const before = await bark();
+    await page.evaluate(() => {
+      const kit = window.__app?.kits[0];
+      kit?.take(5, 8);
+      kit?.take(4, 1);
+    });
+    await say(page, 'build a litter box here');
+    await expect.poll(bark, { timeout: 15_000 }).toBeGreaterThanOrEqual(before + 8);
+    await expect
+      .poll(async () => (await lines(page)).join(' '), { timeout: 5000 })
+      .toMatch(/litter box, done/i);
+  });
+
   test('changes the time of day when asked', async ({ page }) => {
     await say(page, 'make it night');
     await expect

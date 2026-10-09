@@ -186,6 +186,7 @@ export function acknowledge(kind: string, seed: string): string {
     follow: ['Right behind you.', 'Lead on.', 'I am following.'],
     wander: ['I will go and have a look around.', 'Off exploring, then.'],
     stop: ['Stopping.', 'Standing still.'],
+    build: ['Right, let me see what I have.', 'A little building. Stand back.', 'I can do that.'],
     sculpt: [CARD.catchphrases[0] ?? 'Watch this.', 'Reshaping it now.', 'Stand back a little.'],
     paint: ['Changing the colour.', 'A fresh coat coming up.'],
     plant: ['Planting now.', 'Let us grow something.'],

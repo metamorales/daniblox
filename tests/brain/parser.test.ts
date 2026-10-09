@@ -136,6 +136,34 @@ describe('small jobs', () => {
   });
 });
 
+describe('building', () => {
+  it('reads the three structures, at the ring or at coordinates', () => {
+    expect(actions('build a cat tower here')[0]).toEqual({
+      type: 'build',
+      structure: 'tower',
+      at: HERE,
+    });
+    expect(actions('make a little house at 20 12 20')[0]).toEqual({
+      type: 'build',
+      structure: 'house',
+      at: { x: 20, y: 12, z: 20 },
+    });
+    expect(actions('build a litter box here')[0]).toEqual({
+      type: 'build',
+      structure: 'litterbox',
+      at: HERE,
+    });
+    expect(actions('put up a hut')[0]).toMatchObject({ type: 'build', structure: 'house' });
+    expect(actions('tower here', noFocus)[0]).toMatchObject({ type: 'build', at: HERE });
+  });
+
+  it('does not mistake a block or a chore for a building', () => {
+    expect(actions('build a tile here')[0]).toMatchObject({ type: 'place', block: 7 });
+    expect(actions('gather three wood')[0]).toMatchObject({ type: 'mine', block: 5, count: 3 });
+    expect(actions('clear the litter box')[0]).toMatchObject({ type: 'clear' });
+  });
+});
+
 describe('world-scale powers', () => {
   it('reads sculpting', () => {
     expect(actions('raise a hill here')[0]).toMatchObject({ type: 'sculpt', shape: 'raise' });

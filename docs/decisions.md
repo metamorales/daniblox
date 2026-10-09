@@ -314,3 +314,9 @@ Why: an unused package is weight in the lockfile and a question for every reader
 
 What: the pathfinder's fall limit goes from three blocks to the height of the world, with a small cost per block dropped so she prefers a gentler way down when one exists. Climbing is still one step at a time.
 Why: the owner asked her to hop off a hill and she said she could not get there. Falling has no cost to her in this game, so the spec's limit (R4, "fall ≤3") only produced refusals. Amends R4 at the owner's request; R9's "falls ≤3" test becomes "falls any height".
+
+## M9-2 — Structures are built from her pockets, and she gathers what she lacks (2026-10-09)
+
+What: `build` puts up a cat tower (fourteen bark, one gem), a little house (twenty-three bark) or a litter box (eight bark, one shell) at the ring, one block every two ticks, bottom up, from her inventory. Before starting she compares the bill with what she carries and puts gather jobs for the difference ahead of the build; if those come back short, she says what she could not find and the build is dropped.
+Why: the owner asked for structures and for inventory to matter. Building for free would make the pockets decoration; making her fetch each log by hand would make a house a chore. Fetching only the shortfall keeps both honest, and bark, shell and gem are all things that stand on the surface.
+Rejected: pebble walls, which are buried and she cannot reach; a bar over the site, which the action icon's bar already covers.

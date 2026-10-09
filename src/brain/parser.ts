@@ -12,6 +12,7 @@
 
 import { BLOCKS, blockByName } from '../world/blocks';
 import { WORLD_X, WORLD_Y, WORLD_Z } from '../world/chunks';
+import type { StructureKind } from '../world/structures';
 import type { Action } from './schema';
 
 export interface Cell {
@@ -152,7 +153,49 @@ const COMMAND_WORDS = new Set([
   'empty',
   'tidy',
   'make',
+  'construct',
+  'erect',
 ]);
+
+/** Words for the three things she can build. */
+const STRUCTURE_WORDS: Record<string, StructureKind> = {
+  tower: 'tower',
+  cattower: 'tower',
+  house: 'house',
+  home: 'house',
+  hut: 'house',
+  cabin: 'house',
+  cottage: 'house',
+  shed: 'house',
+  litterbox: 'litterbox',
+  litter: 'litterbox',
+  tray: 'litterbox',
+  toilet: 'litterbox',
+  loo: 'litterbox',
+};
+
+/** Verbs that mean something else even when a structure word is about. */
+const NOT_BUILDING = [
+  'mine',
+  'dig',
+  'break',
+  'gather',
+  'collect',
+  'grab',
+  'get',
+  'fetch',
+  'bring',
+  'chop',
+  'clear',
+  'wipe',
+  'erase',
+  'paint',
+  'scatter',
+  'plant',
+  'follow',
+  'go',
+  'walk',
+];
 
 const CANONICAL = [
   'go here',
@@ -173,6 +216,9 @@ const CANONICAL = [
   'scatter gems here',
   'clear this area',
   'make it night',
+  'build a cat tower here',
+  'build a little house here',
+  'build a litter box here',
 ];
 
 function normalise(text: string): string {
@@ -341,6 +387,15 @@ function parsePhrase(raw: string, context: ParseContext): Action[] | null {
         return [{ type: 'settime', phase }];
       }
     }
+  }
+
+  // --- build a structure ---
+  const structure = tokens.map((t) => STRUCTURE_WORDS[t]).find((s) => s !== undefined);
+  if (structure && !has(...NOT_BUILDING)) {
+    // "Here" is the ring even when a block is under the pointer; a building
+    // wants a site, not a block.
+    const at = findCoordinates(tokens) ?? (has('here', 'there') ? here : (focus ?? here));
+    return [{ type: 'build', structure, at }];
   }
 
   // --- world-scale: clear ---

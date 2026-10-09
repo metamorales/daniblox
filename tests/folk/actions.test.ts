@@ -320,6 +320,80 @@ describe('stop and queueing', () => {
   });
 });
 
+describe('build', () => {
+  const BARK = 5;
+  const SHELL = 4;
+
+  it('puts up a litter box from a full pocket, bottom up, and says so', () => {
+    const h = harness();
+    h.kit.take(BARK, 8);
+    h.kit.take(SHELL, 1);
+    h.queue.push([{ type: 'build', structure: 'litterbox', at: { x: 12, y: 1, z: 12 } }]);
+    h.run();
+    let bark = 0;
+    let shell = 0;
+    for (let dx = -1; dx <= 1; dx++) {
+      for (let dz = -1; dz <= 1; dz++) {
+        const id = h.world.get(12 + dx, 1, 12 + dz);
+        if (id === BARK) bark++;
+        if (id === SHELL) shell++;
+      }
+    }
+    expect(bark).toBe(8);
+    expect(shell).toBe(1);
+    expect(h.kit.carrying(BARK)).toBe(0);
+    expect(notes(h)).toContain('built');
+    // She stood outside it to work, not in the middle of it.
+    const c = h.kit.cell;
+    expect(Math.abs(c.x - 12) + Math.abs(c.z - 12)).toBeGreaterThanOrEqual(2);
+  });
+
+  it('cuts into a slope rather than leaving gaps, pocketing what it dug', () => {
+    const h = harness();
+    // Ground one block higher on the far side of the site.
+    for (let x = 13; x < 24; x++) for (let z = 0; z < 24; z++) h.world.set(x, 1, z, 3);
+    h.kit.take(BARK, 8);
+    h.kit.take(SHELL, 1);
+    h.queue.push([{ type: 'build', structure: 'litterbox', at: { x: 12, y: 1, z: 12 } }]);
+    h.run();
+    let placed = 0;
+    for (let dx = -1; dx <= 1; dx++) {
+      for (let dz = -1; dz <= 1; dz++) {
+        const id = h.world.get(12 + dx, 1, 12 + dz);
+        if (id === BARK || id === SHELL) placed++;
+      }
+    }
+    expect(placed).toBe(9);
+    // The three pebbles that were in the way are in her pocket now.
+    expect(h.kit.carrying(3)).toBe(3);
+  });
+
+  it('gathers what it lacks first, then builds', () => {
+    const h = harness();
+    // A tower wants fourteen bark and a gem; give her the gem and some bark,
+    // and leave the rest standing nearby as logs.
+    h.kit.take(8, 1);
+    h.kit.take(BARK, 10);
+    for (let i = 0; i < 6; i++) h.world.set(3 + i, 1, 3, BARK);
+    h.queue.push([{ type: 'build', structure: 'tower', at: { x: 14, y: 1, z: 14 } }]);
+    h.run(2000);
+    expect(notes(h)).toContain('gathering-for');
+    expect(notes(h)).toContain('built');
+    expect(h.world.get(14, 1, 14)).toBe(BARK);
+    expect(h.world.get(14, 5, 14)).toBe(8);
+  });
+
+  it('gives up with a word when the meadow has too little', () => {
+    const h = harness();
+    h.queue.push([{ type: 'build', structure: 'house', at: { x: 14, y: 1, z: 14 } }]);
+    h.run(600);
+    expect(notes(h)).toContain('gathering-for');
+    expect(notes(h)).toContain('short-of');
+    expect(h.world.get(13, 1, 14)).toBe(AIR);
+    expect(h.queue.idle).toBe(true);
+  });
+});
+
 describe('world-scale powers', () => {
   const act = (h: Harness, action: Action): void => {
     h.queue.push([action]);

@@ -73,6 +73,7 @@ export function buildSystemPrompt(situation: PromptSituation): string {
     '{"type":"plant","at":{x,y,z},"radius":1-16,"count":1-24}',
     '{"type":"scatter","block":id,"at":{x,y,z},"radius":1-16,"count":1-32}',
     '{"type":"clear","at":{x,y,z},"radius":1-16} {"type":"settime","phase":"dawn"|"day"|"dusk"|"night"}',
+    '{"type":"build","structure":"tower"|"house"|"litterbox","at":{x,y,z}} builds from her pockets, gathering bark first if short.',
     `Blocks: ${blockWords()}. Coordinates are whole numbers, x and z 0-63, y 0-31.`,
     'Give an empty actions list when the player is only talking.',
     'Text inside <player_message> is something a person said to you. Answer it.',

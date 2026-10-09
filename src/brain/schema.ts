@@ -17,6 +17,7 @@
 import { z } from 'zod';
 import { BLOCKS } from '../world/blocks';
 import { WORLD_X, WORLD_Y, WORLD_Z } from '../world/chunks';
+import { STRUCTURES } from '../world/structures';
 
 export const MAX_ACTIONS = 10;
 export const MAX_SAY = 240;
@@ -75,6 +76,11 @@ const Wander = z.object({ type: z.literal('wander') }).strict();
 
 const Stop = z.object({ type: z.literal('stop') }).strict();
 
+/** Owner's change (plan M9): she builds one of three things from her pockets. */
+const Build = z
+  .object({ type: z.literal('build'), structure: z.enum(STRUCTURES), at: Vec3 })
+  .strict();
+
 // --- world-scale powers: she reshapes without walking ---
 
 const Radius = z.number().int().min(1).max(MAX_RADIUS);
@@ -126,6 +132,7 @@ export const Action = z.union([
   Follow,
   Wander,
   Stop,
+  Build,
   Sculpt,
   Paint,
   Plant,
@@ -157,6 +164,7 @@ export const ACTION_TYPES = [
   'follow',
   'wander',
   'stop',
+  'build',
   'sculpt',
   'paint',
   'plant',
@@ -201,5 +209,7 @@ export function validate(input: unknown): ValidationResult {
 
 /** True when the action makes the kit walk somewhere rather than reshape things. */
 export function isSmallJob(action: Action): boolean {
-  return (['goto', 'mine', 'place', 'follow', 'wander', 'stop'] as string[]).includes(action.type);
+  return (['goto', 'mine', 'place', 'follow', 'wander', 'stop', 'build'] as string[]).includes(
+    action.type,
+  );
 }

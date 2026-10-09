@@ -15,6 +15,7 @@ import { validate, type Action } from '../brain/schema';
 import { ActionQueue, type ActionWorld } from '../folk/actions';
 import type { Kit } from '../folk/kit';
 import { AIR, blockById, blockByName } from '../world/blocks';
+import { STRUCTURE_LABELS, type StructureKind } from '../world/structures';
 import { AmbientChatter } from '../chat/ambient';
 import { acknowledge, type Situation } from '../chat/dialogue';
 import type { WorldView } from '../render/scene';
@@ -117,6 +118,20 @@ function voice(note: string, detail: Record<string, unknown> | undefined): strin
       return 'All tidy.';
     case 'lifted':
       return 'Up we go.';
+    case 'gathering-for': {
+      const what = STRUCTURE_LABELS[detail?.structure as StructureKind] ?? 'that';
+      return `A ${what} wants ${String(detail?.count ?? 'some')} more ${label(detail?.block)}. I will fetch it first.`;
+    }
+    case 'short-of': {
+      const what = STRUCTURE_LABELS[detail?.structure as StructureKind] ?? 'that';
+      return `I could not find enough ${label(detail?.block)} for a ${what}.`;
+    }
+    case 'built': {
+      const what = STRUCTURE_LABELS[detail?.structure as StructureKind] ?? 'that';
+      return `One ${what}, done.`;
+    }
+    case 'nowhere-to-build':
+      return 'There is no room to build there.';
     case 'time-changed':
       return `There you go: ${String(detail?.phase ?? 'a new hour')}.`;
     case 'nothing-happened':

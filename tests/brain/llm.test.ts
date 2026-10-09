@@ -121,6 +121,7 @@ describe('the prompt', () => {
       'scatter',
       'clear',
       'settime',
+      'build',
     ]) {
       expect(prompt, action).toContain(`"${action}"`);
     }

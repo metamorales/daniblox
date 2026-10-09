@@ -60,6 +60,7 @@ describe('accepting good output', () => {
       scatter: { type: 'scatter', block: 8, at: { x: 1, y: 1, z: 1 }, radius: 2, count: 1 },
       clear: { type: 'clear', at: { x: 1, y: 1, z: 1 }, radius: 2 },
       settime: { type: 'settime', phase: 'dawn' },
+      build: { type: 'build', structure: 'tower', at: { x: 1, y: 1, z: 1 } },
     };
     for (const name of ACTION_TYPES) {
       expect(validate(ok([samples[name]])).ok, `${name} does not validate`).toBe(true);
@@ -130,6 +131,10 @@ describe('rejecting bad output, one case per rule in the spec', () => {
       'an amount past the limit',
     );
     rejects(ok([{ type: 'clear', at: { x: 1, y: 1, z: 1 }, radius: 0 }]), 'a radius of zero');
+  });
+
+  it('rejects a structure it does not know', () => {
+    rejects(ok([{ type: 'build', structure: 'castle', at: { x: 1, y: 1, z: 1 } }]), 'a castle');
   });
 
   it('rejects an unknown shape, phase or mood', () => {

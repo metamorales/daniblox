@@ -18,11 +18,19 @@ import { hashUnit } from '../world/random';
 import type { Action } from '../brain/schema';
 import { Kit } from './kit';
 import { type Cell, distance, isWalkable } from './pathfinding';
+import {
+  blueprint,
+  type Blueprint,
+  type BlueprintCell,
+  type StructureKind,
+} from '../world/structures';
 
 /** Spec R4: nearest N of a type within this many blocks. */
 export const SEARCH_RADIUS = 16;
 /** Spec R4: 0.6 s of work per block mined. */
 export const MINE_TICKS = 12;
+/** One block of a structure every tenth of a second. */
+export const BUILD_TICKS = 2;
 const WANDER_RADIUS = 8;
 const WANDER_PAUSE_TICKS = [20, 40, 60];
 const FOLLOW_NEAR = 1.5;
@@ -55,6 +63,30 @@ interface Job {
   waits: number;
   started: boolean;
   target: Cell | null;
+  /** For a build: the plan, how far through it she is, and cells to retry. */
+  plan: Blueprint | null;
+  placed: number;
+  built: number;
+  skipped: BlueprintCell[];
+  /** Set once gather jobs were put ahead of a build, so it never loops. */
+  gathered: boolean;
+}
+
+function newJob(action: Action): Job {
+  return {
+    action,
+    mined: 0,
+    work: 0,
+    waited: 0,
+    waits: 0,
+    started: false,
+    target: null,
+    plan: null,
+    placed: 0,
+    built: 0,
+    skipped: [],
+    gathered: false,
+  };
 }
 
 export class ActionQueue {
@@ -93,15 +125,7 @@ export class ActionQueue {
         this.clear();
         continue;
       }
-      this.jobs.push({
-        action,
-        mined: 0,
-        work: 0,
-        waited: 0,
-        waits: 0,
-        started: false,
-        target: null,
-      });
+      this.jobs.push(newJob(action));
     }
   }
 
@@ -145,6 +169,8 @@ export class ActionQueue {
       case 'stop':
         this.clear();
         return true;
+      case 'build':
+        return this.runBuild(job, action.structure, action.at);
       case 'sculpt':
       case 'paint':
       case 'plant':
@@ -423,6 +449,162 @@ export class ActionQueue {
     world.set(at.x, at.y, at.z, block);
     this.context.report(kit, 'placed', { block, at });
     return true;
+  }
+
+  // --- building ---
+
+  /**
+   * Put up a structure from her pockets, one block every couple of ticks,
+   * bottom up. What she lacks she gathers first by putting gather jobs ahead
+   * of this one; if the meadow cannot supply it, she says so and gives up.
+   */
+  private runBuild(job: Job, kind: StructureKind, at: Cell): boolean {
+    const kit = this.kit;
+    const world = this.context.world;
+    kit.activity = 'building';
+
+    if (!job.plan) {
+      job.plan = blueprint(kind, at, world);
+      if (job.plan.cells.length === 0) {
+        this.context.report(kit, 'nowhere-to-build', { structure: kind });
+        return true;
+      }
+    }
+    const plan = job.plan;
+
+    // Materials are checked once, before she sets off. Checking again later
+    // would count the blocks she has already placed as missing, and she
+    // would go and dig up her own work.
+    if (!job.started) {
+      const short = this.shortfall(plan);
+      if (short.length > 0) {
+        const first = short[0];
+        if (job.gathered || !first) {
+          this.context.report(kit, 'short-of', {
+            structure: kind,
+            block: first?.[0],
+            count: first?.[1] ?? 0,
+          });
+          return true;
+        }
+        job.gathered = true;
+        const gathers: Job[] = [];
+        for (const [block, missing] of short) {
+          let left = missing;
+          while (left > 0) {
+            const count = Math.min(16, left);
+            gathers.push(newJob({ type: 'mine', block, count }));
+            left -= count;
+          }
+        }
+        this.jobs.splice(0, 0, ...gathers);
+        this.context.report(kit, 'gathering-for', {
+          structure: kind,
+          block: first[0],
+          count: first[1],
+        });
+        return false;
+      }
+      job.started = true;
+      job.target = this.buildSpot(at);
+      kit.goTo(world, job.target);
+      return false;
+    }
+    if (kit.state === 'thinking' || kit.state === 'walking' || kit.state === 'falling')
+      return false;
+    if (kit.state === 'stuck' && distance(kit.cell, at) > 5) {
+      this.context.report(kit, 'cannot-reach', { at });
+      return true;
+    }
+
+    kit.facing = Math.atan2(at.x + 0.5 - kit.position.x, at.z + 0.5 - kit.position.z);
+    job.work++;
+    if (job.work % BUILD_TICKS !== 0) return false;
+
+    while (job.placed < plan.cells.length) {
+      const cell = plan.cells[job.placed];
+      job.placed++;
+      if (!cell) continue;
+      if (world.get(cell.x, cell.y, cell.z) === cell.block) continue;
+      if (this.occupied(cell)) {
+        job.skipped.push(cell);
+        continue;
+      }
+      if (!this.lay(cell)) {
+        this.context.report(kit, 'short-of', { structure: kind, block: cell.block, count: 1 });
+        return true;
+      }
+      job.built++;
+      kit.progress = job.placed / plan.cells.length;
+      return false;
+    }
+
+    // One more go at the cells somebody was standing in.
+    const retry = job.skipped.shift();
+    if (retry) {
+      if (!this.occupied(retry) && this.lay(retry)) job.built++;
+      return false;
+    }
+
+    kit.progress = null;
+    this.context.report(kit, 'built', { structure: kind, count: job.built });
+    return true;
+  }
+
+  /**
+   * Put one planned block in. A site on a slope has ground in the footprint;
+   * she digs that out into her pocket first, so a house cuts into a hill
+   * rather than coming out with gaps. False when she has nothing to lay.
+   */
+  private lay(cell: BlueprintCell): boolean {
+    const world = this.context.world;
+    const kit = this.kit;
+    const existing = world.get(cell.x, cell.y, cell.z);
+    if (existing === cell.block) return true;
+    if (!kit.spend(cell.block)) return false;
+    if (existing !== AIR) kit.take(existing);
+    world.set(cell.x, cell.y, cell.z, cell.block);
+    return true;
+  }
+
+  /** What the plan needs beyond what she carries, as [block, missing] pairs. */
+  private shortfall(plan: Blueprint): [number, number][] {
+    const out: [number, number][] = [];
+    for (const [block, needed] of plan.bill) {
+      const missing = needed - this.kit.carrying(block);
+      if (missing > 0) out.push([block, missing]);
+    }
+    return out;
+  }
+
+  /** Somewhere to stand just outside the footprint, nearest first. */
+  private buildSpot(at: Cell): Cell {
+    const world = this.context.world;
+    const options: Cell[] = [];
+    for (const [dx, dz] of [
+      [2, 0],
+      [-2, 0],
+      [0, 2],
+      [0, -2],
+      [2, 2],
+      [-2, 2],
+      [2, -2],
+      [-2, -2],
+    ] as const) {
+      const x = at.x + dx;
+      const z = at.z + dz;
+      const y = world.surfaceHeight(x, z) + 1;
+      if (isWalkable(world, x, y, z)) options.push({ x, y, z });
+    }
+    options.sort((a, b) => distance(a, this.kit.cell) - distance(b, this.kit.cell));
+    return options[0] ?? this.beside(at);
+  }
+
+  private occupied(cell: Cell): boolean {
+    return this.context.kits.some((other) => {
+      const c = other.cell;
+      return c.x === cell.x && c.z === cell.z && (c.y === cell.y || c.y + 1 === cell.y);
+    });
   }
 
   private hasSolidNeighbour(at: Cell): boolean {
