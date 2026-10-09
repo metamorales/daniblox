@@ -52,6 +52,10 @@ export class Kit {
 
   facing = 0;
   state: KitState = 'idle';
+  /** What she is carrying, by block id. */
+  readonly inventory = new Map<number, number>();
+  /** A short label for the current job, shown beside her name. */
+  activity: string | null = null;
   /** Set when the last request could not be met, for the chat layer to voice. */
   lastProblem: string | null = null;
 
@@ -66,6 +70,23 @@ export class Kit {
     this.appearance = options.appearance;
     this.position = { x: options.at.x + 0.5, y: options.at.y, z: options.at.z + 0.5 };
     this.previous = { ...this.position };
+  }
+
+  carrying(block: number): number {
+    return this.inventory.get(block) ?? 0;
+  }
+
+  take(block: number, amount = 1): void {
+    this.inventory.set(block, this.carrying(block) + amount);
+  }
+
+  /** Spend from the inventory. Returns false when there is nothing to spend. */
+  spend(block: number, amount = 1): boolean {
+    const held = this.carrying(block);
+    if (held < amount) return false;
+    if (held === amount) this.inventory.delete(block);
+    else this.inventory.set(block, held - amount);
+    return true;
   }
 
   /** The cell the kit is standing in. */
