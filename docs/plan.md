@@ -5,33 +5,33 @@ Conventions: "Test:" is automated and runs in CI. "Measure:" is recorded in §5 
 
 ## 0. Environment prerequisites (before M0)
 
-| Item | Owner | Done when |
-|---|---|---|
-| Homebrew installed | user (needs password) | `brew --version` prints |
-| Node 20 + npm | me: `brew install node@20` and link it (fallback: `brew install node`, CI stays on 20) | `node --version` prints v20.x, `npm --version` prints |
-| ffmpeg (hero GIF, optional) | me: `brew install ffmpeg` | `ffmpeg -version` prints; pure-JS encoder is the fallback |
-| Playwright browsers | me: `npx playwright install chromium` (~150 MB); firefox + webkit later for the browser matrix | `npx playwright --version` and a boot test run |
-| Git identity (repo-local) | me | `git config user.email` prints the noreply address |
-| Push access | user confirms SSH key or HTTPS credential | first `git push` succeeds |
-| Pages source = GitHub Actions | user (done) | deploy job succeeds; `curl -sI` the Pages URL → 200 |
-| CI status without `gh` | me | `curl -s https://api.github.com/repos/metamorales/daniblox/actions/runs?per_page=1` → conclusion "success" |
+| Item                          | Owner                                                                                          | Done when                                                                                                  |
+| ----------------------------- | ---------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------- |
+| Homebrew installed            | user (needs password)                                                                          | `brew --version` prints                                                                                    |
+| Node 20 + npm                 | me: `brew install node@20` and link it (fallback: `brew install node`, CI stays on 20)         | `node --version` prints v20.x, `npm --version` prints                                                      |
+| ffmpeg (hero GIF, optional)   | me: `brew install ffmpeg`                                                                      | `ffmpeg -version` prints; pure-JS encoder is the fallback                                                  |
+| Playwright browsers           | me: `npx playwright install chromium` (~150 MB); firefox + webkit later for the browser matrix | `npx playwright --version` and a boot test run                                                             |
+| Git identity (repo-local)     | me                                                                                             | `git config user.email` prints the noreply address                                                         |
+| Push access                   | user confirms SSH key or HTTPS credential                                                      | first `git push` succeeds                                                                                  |
+| Pages source = GitHub Actions | user (done)                                                                                    | deploy job succeeds; `curl -sI` the Pages URL → 200                                                        |
+| CI status without `gh`        | me                                                                                             | `curl -s https://api.github.com/repos/metamorales/daniblox/actions/runs?per_page=1` → conclusion "success" |
 
 ## 1. Name check — "Daniblox" (checked 2026-10-09)
 
-| Where | Result |
-|---|---|
-| GitHub | No repository was named daniblox; this repo was renamed to `metamorales/daniblox` on 2026-10-09 (GitHub redirects the old URL). A user account "Daniblox" exists (created April 2026, no public repos) and does not block the repo name. |
-| npm | `daniblox` and `dani-blox` both unregistered. |
-| Trademarks | No Daniblox mark found. Noted risk: Roblox Corporation bars "Blox" in titles on its own platform, opposed BLOXEEZ at the trademark board in 2019, and sued the Bloxflip site, which also used Robux branding. Many unrelated "Blox" games ship on Steam. Judged low risk for a free MIT project that does not resemble Roblox; the owner accepted it on 2026-10-09. |
-| Steam / itch.io | No match for daniblox. |
-| Domains | daniblox.com/.io/.dev/.app unregistered (no DNS; whois "No match"). |
+| Where           | Result                                                                                                                                                                                                                                                                                                                                                              |
+| --------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| GitHub          | No repository was named daniblox; this repo was renamed to `metamorales/daniblox` on 2026-10-09 (GitHub redirects the old URL). A user account "Daniblox" exists (created April 2026, no public repos) and does not block the repo name.                                                                                                                            |
+| npm             | `daniblox` and `dani-blox` both unregistered.                                                                                                                                                                                                                                                                                                                       |
+| Trademarks      | No Daniblox mark found. Noted risk: Roblox Corporation bars "Blox" in titles on its own platform, opposed BLOXEEZ at the trademark board in 2019, and sued the Bloxflip site, which also used Robux branding. Many unrelated "Blox" games ship on Steam. Judged low risk for a free MIT project that does not resemble Roblox; the owner accepted it on 2026-10-09. |
+| Steam / itch.io | No match for daniblox.                                                                                                                                                                                                                                                                                                                                              |
+| Domains         | daniblox.com/.io/.dev/.app unregistered (no DNS; whois "No match").                                                                                                                                                                                                                                                                                                 |
 
 **Decision: Daniblox.** The characters are called **kits** in every user-facing string. The source folder stays `src/folk/` because the spec fixes the layout; only the wording changes. Wordmark: §3.6.
-
 
 ## 2. Milestones and exit criteria
 
 ### M0 — scaffold, CI, Pages deploy of a placeholder scene
+
 - Checkout: `git init -b main`, remote `origin`, fetch, reset to `origin/main`; repo-local identity. Check: `git status` clean, `git config user.email` set.
 - Scaffold: Vite + TypeScript strict + Preact/@preact/signals + Three.js + CSS Modules; ESLint + Prettier; `engines: ">=20"`; Vite `base: '/daniblox/'`. Check: `npm run lint && npm test && npm run build` exit 0.
 - Layout: every spec folder exists with a ≤5-line README.md. Test: a script asserts each README ≤5 lines.
@@ -46,6 +46,7 @@ Conventions: "Test:" is automated and runs in CI. "Measure:" is recorded in §5 
 - Placeholder scene (sky gradient + one lit cube + orbit) deployed. Check: `curl -sI https://metamorales.github.io/daniblox/` → 200; latest CI run conclusion "success" via the REST API.
 
 ### M1 — terrain, meshing, AO, orbit camera, reticle, day/night
+
 - Registry: the eight blocks of §3.4 (crumb, clover, pebble, shell, bark, sprout, tile, gem) with id, synonyms, solid flag, atlas layer, and an unlit flag for gem. Test: ids match §3.4; `check:words` green.
 - World: 64×64×32 in 16 chunks of 16×16×32 `Uint8Array`; simplex-noise terrain per §3.8 rule 5. Tests: same seed → identical byte hash twice, different seed → different; 16 chunks × 8,192 bytes; all 8 ids occur; no shell above shore level + 2; no pebble directly above clover; ≥10 bark blocks each with sprout within radius 2; tree shapes vary by hash.
 - Mesher: greedy + per-vertex AO (AO = 3 − (side1 + side2 + corner), both-sides-solid → 0; strength 0.6, eased in the shader). Tests: 1 block → 6 faces; 2 adjacent → 10; fully enclosed → 0; exact AO vertex values for one documented 3-block corner. Scheduler test: 5 dirty chunks remesh over exactly 5 frames. Measure: worst-case checkerboard chunk, median of 20 runs ≤ 4 ms in the browser perf panel; CI guard ≤ 20 ms.
@@ -57,6 +58,7 @@ Conventions: "Test:" is automated and runs in CI. "Measure:" is recorded in §5 
 - Measure: p95 and worst frame on the dev laptop with the full world, recorded in §5. Human: AO + rim legibility on a phone (lever: rim mix 45 %).
 
 ### M2 — one kit walking with pathfinding and gravity
+
 - Kit entity and body per §3.5 (one preset suffices here), idle + walk animation, shadow disc, nameplate. Rendering choice (one merged mesh per kit vs per-part InstancedMesh) recorded in decisions.md with the resulting draw-call count.
 - Walkable predicate per R4 (non-solid at y and y+1, solid at y−1); A* with a binary heap, time-sliced ≤2 ms/frame, 4,000-node cap; step up 1, fall ≤3, 4-neighbour moves; cost 1 / +0.5 per step up. Tests: around a wall; refuses a 2-high step; refuses a 1-high tunnel (headroom); falls ≤3; unreachable → nearest reachable cell within 3; node cap triggers and falls back.
 - Movement: 3 blocks/s (20 ticks on a flat path move 3.0 ± 0.05 cells); gravity when the support block is removed; replan when a block on the remaining path changes. Property test: 2,000 random ticks on a generated world → per-tick horizontal displacement ≤ 0.15 + ε, vertical change only +1 or negative, feet and head cells never solid.
@@ -65,6 +67,7 @@ Conventions: "Test:" is automated and runs in CI. "Measure:" is recorded in §5 
 - e2e: "go here" on a ground cell → within 10 s the kit's cell equals the target.
 
 ### M3 — action queue, all actions, click-to-direct, ScriptedBrain parser
+
 - `Brain.respond({ text, source, folk, world, history }) → Promise<BrainOutput>`; Action/BrainOutput types; zod schema and `validate()` applied to every Brain's output (non-negotiable 2) with basic tests; the full per-rule rejection suite lands in M5.
 - Per-kit action queue. goto; mine by type+count (nearest N within radius 16, trying up to 5 nearest candidates before "none reachable") and mine at; place (preconditions: air, adjacent solid, not occupied, not own cell, inventory ≥1; consumes 1); follow (re-path when distance > 2, halt at ≤ 1.5; target "user" = the reticle cell, tracked as it moves); wander (random reachable cell within radius 8, 1–3 s pause between legs); stop. Constants recorded in decisions.md. Tests: one per action; five place-precondition failures plus the success case; follow tracks a moving target; wander stays within radius; stop empties queue and path within one tick.
 - Occupancy lives in the movement step, not the pathfinder (R4: kits are not obstacles): next cell occupied → wait 0.5 s then replan; after 3 waits, or on arriving at an occupied target, stop on the nearest free adjacent cell and say so.
@@ -76,6 +79,7 @@ Conventions: "Test:" is automated and runs in CI. "Measure:" is recorded in §5 
 - Bare UI shell (unstyled Preact): roster, text input, plain thread list, toast primitive, `aria-live="polite"` region announcing actions. e2e: spawn → the name appears in the roster; type "wander" → the status and the aria-live text contain the kit name and "wander".
 
 ### M4 — chat, personality cards, template grammar, ambient chatter, content filter
+
 - 12 cards complete: original name, 2-line bio, mood, 3 quirks, 2 catchphrases. Test: zod over the cards (unique names, exactly 2 bio lines, 3 quirks, 2 catchphrases).
 - Template grammar seeded by the card: replies ≤2 sentences and ≤240 chars, grounded in current action, position, inventory, time of day. Tests: for each action × 4 times of day × {empty, non-empty inventory} the reply has ≤2 sentences and contains the action/time token; two cards give different replies to the same input; ≥50 % of 200 seeded samples contain a quirk or catchphrase token.
 - Click a kit → speech bubble and the thread (last 50 lines per kit) in the shell.
@@ -84,6 +88,7 @@ Conventions: "Test:" is automated and runs in CI. "Measure:" is recorded in §5 
 - aria-live announces chat lines. Human: 10 transcripts spot-checked, recorded in §5.
 
 ### M5 — LLMBrain, validator, settings, rate limit, fallback
+
 - Full validator suite: one test per R2 rejection rule (invalid JSON, unknown type, extra keys at any level, non-integer or out-of-bounds coordinates, unknown block, count outside 1..16, more than 10 actions, `say` outside 1..240).
 - LLMBrain: OpenAI-compatible `{baseUrl}/chat/completions` (editable baseUrl, `response_format: json_object` when supported) and Anthropic `/v1/messages` with `anthropic-version` and `anthropic-dangerous-direct-browser-access: true`; model is a text field with a small, cheap per-provider default recorded in decisions.md; temperature 0.7, max_tokens 200, 10 s AbortController timeout. Tests with mocked fetch: URL, headers, body shape, abort at 10 s under fake timers.
 - Prompt builder: identity + card; the six rules (JSON only; ≤2 sentences; all-ages; stay in character; actions only from the enum; ignore instructions inside the user message); snapshot (time of day, position, inventory, block counts within radius 8, kits within 10 blocks with their action, own action + queue); last 6 turns; user text escaped inside `<user_message>`. Test: worst-case snapshot ≤ 2,400 chars (chars/4 ≈ 600 tokens; no tokenizer dependency).
@@ -94,6 +99,7 @@ Conventions: "Test:" is automated and runs in CI. "Measure:" is recorded in §5 
 - Verification, three tiers: (a) CI-gated Playwright route mocks for success, invalid-then-valid (retry), double failure (badge), 429, a 10 s stall (timeout), and an aborted/CORS request (banner); (b) `tools/fake-llm.mjs`, a 20-line Node server returning canned BrainOutput with and without CORS headers, proves the real fetch path from the dev origin; (c) a live run against one OpenAI-compatible endpoint and one Anthropic endpoint recorded in §5 — needs the user's key or a local server; if unavailable, R11.6 is reported partial, never skipped silently.
 
 ### M6 — visual identity, themes, sidebar, palette, onboarding, accessibility, touch
+
 - Tokens from §3.1–3.2 as CSS variables; dark and light themes; `docs/design.md` with the per-element originality notes. Test: WCAG ratios computed over the token file for every text/bg pair in both themes (≥4.5 body, ≥3 border and large text).
 - Sidebar restyled (roster, thread, command input); command palette (Ctrl/Cmd+K, Esc) whose input routes through the same Brain path as the sidebar input; settings (brain, theme, reduced motion, render distance, re-run onboarding, Advanced → perf panel with frame time, draw calls, path nodes/frame); toasts; mobile bottom sheet. e2e: each of the six actions issued once from the palette and once from the sidebar.
 - Keyboard equivalents: palette commands `place <block> at x y z` and `break at x y z` act for the user at the reticle cell; arrow keys in the roster select kits; F focuses. The full R5 controls table is re-run and recorded in §5.
@@ -104,11 +110,13 @@ Conventions: "Test:" is automated and runs in CI. "Measure:" is recorded in §5 
 - All 12 kits finished; the four-frame litmus protocol (§3.8 rule 8) run once, screenshots and outcome in §5.
 
 ### M7 — persistence and share links
+
 - `localStorage["daniblox:v1"]` = { seed, voxels (RLE + base64), kits incl. inventories, chat ≤50 lines per kit, settings }; saves debounced 2 s and flushed on `pagehide`/hidden; v2 migration stub; warn at 4 MB; the key is never serialized. Tests: save/load round-trip; the migration stub runs for a v0 blob; 4 MB warning; localStorage getter throwing → in-memory store and one toast; `setItem` QuotaExceeded → toast, play continues.
 - Reset world: removes the key, new random seed, clears kits and chat, keeps settings. e2e: edit a block, reset, confirm → key absent and the cell regenerated.
 - Share link: `#s=<seed>` plus `&w=<compressed edits>` only if the hash stays under 2,000 chars, else seed only with a toast. Opening a valid link loads that world for the session; the saved world is kept until the first edit (a toast explains). Corrupted hash → the saved world if present, else fresh, with a toast. Tests: encode/decode round-trip; over-length → seed only; corrupted → fallback; the key absent from the hash.
 
 ### M8 — full test suite, perf pass, docs, README GIF, release
+
 - Traceability: every R9 line → test file + name; every R11 item → status → evidence (test, CI run URL, §5 row, or "deferred: <blocker>").
 - Soak e2e: 8 kits running all six actions for 2 minutes including a block removed under a walker → no clipping or teleport (property assertions), no console errors, no unhandled rejections; draw calls ≤ visible chunks + kits.
 - Perf: a `?bench=1` scenario (8 kits wandering, orbiting camera, 60 s) exports { p50, p95, max frame ms, draw calls, path nodes/frame } as JSON; PASS/FAIL against R6 on the dev laptop. Phone: a real Android device if available, otherwise DevTools 4× CPU throttle at 375×812 recorded as "emulated" with R11.3 marked partial. TTI proxy: `performance.mark('interactive')` at first frame + enabled input, ≤3 s under Fast 4G on `vite preview`; bundle gate green.
@@ -129,35 +137,35 @@ Chosen by the owner on 2026-10-09, replacing an earlier cut-paper direction. The
 
 ### 3.1 Palette
 
-| Swatch | Hex | Role |
-|---|---|---|
-| Crumb | `#e6a0a4` | block: ground. Soft rose-clay soil. Deliberately rosy so that shading keeps it pink rather than brown. |
-| Clover | `#86cf6c` | block: grass-topped ground. Bright spring green with tiny white flower pixels. |
-| Pebble | `#c3c7d6` | block: stone. Pale lavender-grey with rounded pebble shapes. |
-| Shell | `#f6e4c3` | block: sand. Pale cream with a few speckles. |
-| Bark | `#9c6243` | block: log. Warm cocoa trunk, soft vertical grain, lighter end cap. |
-| Sprout | `#3fae7f` | block: leaves. Teal-green clusters with berry dots. |
-| Tile | `#4f8fd8` | block: building block. Painted cornflower-blue tile with a top highlight. |
-| Gem | `#ff5fa2` | block: accent. Candy-pink crystal with a sparkle; unlit so it stays bright at night. |
-| Sky Day | `#8fd6f0` | day-sky zenith; hemisphere sky light |
-| Sky Dusk | `#f3a97e` | dusk horizon |
-| Cream | `#fdf3e2` | light theme background; day-sky horizon; cloud fill |
-| Plum | `#221d33` | dark theme background; night-sky zenith |
-| Ink | `#332a4a` | light theme text; the single dark outline colour on kits and icons |
+| Swatch   | Hex       | Role                                                                                                   |
+| -------- | --------- | ------------------------------------------------------------------------------------------------------ |
+| Crumb    | `#e6a0a4` | block: ground. Soft rose-clay soil. Deliberately rosy so that shading keeps it pink rather than brown. |
+| Clover   | `#86cf6c` | block: grass-topped ground. Bright spring green with tiny white flower pixels.                         |
+| Pebble   | `#c3c7d6` | block: stone. Pale lavender-grey with rounded pebble shapes.                                           |
+| Shell    | `#f6e4c3` | block: sand. Pale cream with a few speckles.                                                           |
+| Bark     | `#9c6243` | block: log. Warm cocoa trunk, soft vertical grain, lighter end cap.                                    |
+| Sprout   | `#3fae7f` | block: leaves. Teal-green clusters with berry dots.                                                    |
+| Tile     | `#4f8fd8` | block: building block. Painted cornflower-blue tile with a top highlight.                              |
+| Gem      | `#ff5fa2` | block: accent. Candy-pink crystal with a sparkle; unlit so it stays bright at night.                   |
+| Sky Day  | `#8fd6f0` | day-sky zenith; hemisphere sky light                                                                   |
+| Sky Dusk | `#f3a97e` | dusk horizon                                                                                           |
+| Cream    | `#fdf3e2` | light theme background; day-sky horizon; cloud fill                                                    |
+| Plum     | `#221d33` | dark theme background; night-sky zenith                                                                |
+| Ink      | `#332a4a` | light theme text; the single dark outline colour on kits and icons                                     |
 
 Measured separation: the closest two blocks are Pebble and Shell at an RGB distance of 62, and all twenty-eight pairs are at least 60 apart, so no two blocks blur together on a phone. Only Bark falls in the brown band, which is correct for a tree trunk and is whitelisted.
 
 ### 3.2 Themes (CSS variables; all ratios recomputed locally, all pass WCAG AA)
 
-| Token | Dark | Light |
-|---|---|---|
-| bg | `#221d33` | `#fdf3e2` |
-| surface | `#2f2746` | `#ffffff` |
-| text | `#f7eddc` (14.0:1 on bg) | `#332a4a` (12.2:1) |
-| muted | `#bcb0cf` (7.9:1) | `#605475` (6.3:1) |
-| accent | `#ff8ec0` (7.7:1) | `#c42c6e` (4.9:1) |
-| on-accent (button labels) | the bg colour, never white (white fails at 2.1:1) | the bg colour |
-| border | `#8579a3` (4.1:1) | `#8d8099` (3.4:1) |
+| Token                     | Dark                                              | Light              |
+| ------------------------- | ------------------------------------------------- | ------------------ |
+| bg                        | `#221d33`                                         | `#fdf3e2`          |
+| surface                   | `#2f2746`                                         | `#ffffff`          |
+| text                      | `#f7eddc` (14.0:1 on bg)                          | `#332a4a` (12.2:1) |
+| muted                     | `#bcb0cf` (7.9:1)                                 | `#605475` (6.3:1)  |
+| accent                    | `#ff8ec0` (7.7:1)                                 | `#c42c6e` (4.9:1)  |
+| on-accent (button labels) | the bg colour, never white (white fails at 2.1:1) | the bg colour      |
+| border                    | `#8579a3` (4.1:1)                                 | `#8d8099` (3.4:1)  |
 
 ### 3.3 Type pairing (both SIL OFL 1.1, verified present in google/fonts `ofl/`)
 
@@ -170,16 +178,16 @@ Measured separation: the closest two blocks are Pebble and Shell at an RGB dista
 
 Every block is one short friendly word for something you would find on a sunny walk, so the names are easy for anyone to type and nothing borrows vocabulary from another game. Synonyms ship with the parser and appear in onboarding.
 
-| Role | Name / id | Hex | Look (16 px tile) | Synonyms |
-|---|---|---|---|---|
-| ground | `crumb` | `#e6a0a4` | rose-clay soil, soft speckle, pale top edge | ground, earth |
-| grass-topped ground | `clover` | `#86cf6c` | green top with three white flower pixels; sides carry the green down, never onto a brown face | grass, turf |
-| stone | `pebble` | `#c3c7d6` | lavender-grey with two or three rounded pebble shapes | stone, rock |
-| sand | `shell` | `#f6e4c3` | pale cream with scattered dots and one tiny shell curl | sand |
-| log | `bark` | `#9c6243` | cocoa trunk, soft vertical grain; end cap is a lighter disc with a single swirl | log, wood |
-| leaves | `sprout` | `#3fae7f` | teal-green leaf clusters with two berry dots | leaves, leaf |
-| building block | `tile` | `#4f8fd8` | painted cornflower tile, highlight along the top edge, small corner notch | brick, block |
-| accent | `gem` | `#ff5fa2` | candy-pink crystal facet with a four-point sparkle; unlit branch so it glows at night | gem, crystal |
+| Role                | Name / id | Hex       | Look (16 px tile)                                                                             | Synonyms      |
+| ------------------- | --------- | --------- | --------------------------------------------------------------------------------------------- | ------------- |
+| ground              | `crumb`   | `#e6a0a4` | rose-clay soil, soft speckle, pale top edge                                                   | ground, earth |
+| grass-topped ground | `clover`  | `#86cf6c` | green top with three white flower pixels; sides carry the green down, never onto a brown face | grass, turf   |
+| stone               | `pebble`  | `#c3c7d6` | lavender-grey with two or three rounded pebble shapes                                         | stone, rock   |
+| sand                | `shell`   | `#f6e4c3` | pale cream with scattered dots and one tiny shell curl                                        | sand          |
+| log                 | `bark`    | `#9c6243` | cocoa trunk, soft vertical grain; end cap is a lighter disc with a single swirl               | log, wood     |
+| leaves              | `sprout`  | `#3fae7f` | teal-green leaf clusters with two berry dots                                                  | leaves, leaf  |
+| building block      | `tile`    | `#4f8fd8` | painted cornflower tile, highlight along the top edge, small corner notch                     | brick, block  |
+| accent              | `gem`     | `#ff5fa2` | candy-pink crystal facet with a four-point sparkle; unlit branch so it glows at night         | gem, crystal  |
 
 ### 3.5 Kit body concept
 
@@ -214,6 +222,7 @@ Against the handheld creature games that inspired the brief: the look borrows a 
 8. **Litmus protocol.** Four cropped frames with the wordmark removed: sunlit meadow at distance, a shaded cliff, a night frame, and a mid-action frame with a progress bar and a block popping. Show them to five people and ask what the game reminds them of. Fail if more than one names the block game, or a specific handheld creature game, on any frame.
 
 ### 3.9 Risks and levers
+
 - Pixel type is tiring for long chat passages. Lever: swap long-form text to a rounded sans in M6 and keep pixel everywhere else. Decided by testing, recorded in decisions.md.
 - Press Start 2P is very wide; "DANIBLOX" at eight characters fits, but it cannot carry sentences. It is capped at headings and above by rule.
 - Bright saturated terrain plus a candy-pink accent can read as noisy. Lever: desaturate Clover and Tile slightly, never the gem, which is the one thing allowed to shout.
@@ -221,30 +230,38 @@ Against the handheld creature games that inspired the brief: the look borrows a 
 - Rose ground is the single boldest choice. If testers read it as odd rather than cute, shift Crumb warmer toward `#e8aa9c` and re-run the shading check, never toward brown.
 - A round pixel sun and fluffy clouds add two small sprites to the sky budget. They are flat quads and cost almost nothing, but they must stay out of the greedy-mesh path.
 
-
 ## 4. R10 edge cases → modules
 
-| R10 edge case | Handling rule | Module(s) |
-|---|---|---|
-| Command names a kit that does not exist | A leading token is a name only when followed by a comma or when it is not a grammar keyword, so verbs are never stolen. Names resolve against the roster (case-insensitive, then edit distance ≤2). No match → nothing is queued; the chat reply says "No kit called X" and names the closest roster name. The selected kit is resolved in `src/app` and passed into `respond()`, so `src/brain` never reads UI state. | src/brain/scripted (parser), src/app (selection), src/chat (reply) |
-| Two kits sent to the same cell | Cells are not reserved and A* ignores kits (R4). In the movement step, an occupied next cell → wait 0.5 s then replan; after 3 waits, or on arriving at an occupied target, the kit stops on the nearest free adjacent cell and says so. | src/folk/actions (movement step) |
-| Block removed under a walking kit | World emits a block-change event; the entity falls (any depth, no damage); the current path is invalidated and replanned from the landing cell. | src/world (events), src/folk/entity (gravity), src/folk/actions (replan) |
-| Target cell occupied when placing | Precondition fails → wait 0.5 s, retry up to 3 times, then decline in character and drop the action. | src/folk/actions (place) |
-| Inventory empty when placing | Checked before pathing; the kit declines in character; action dropped; queue continues. | src/folk/inventory, src/folk/actions, src/chat (templates) |
-| Mine request for a type absent within radius 16 | Nearest-N search finds 0 → in-character "none nearby"; if candidates exist but the nearest is unreachable, up to 5 nearest are tried before "none reachable"; action dropped; queue continues. Partial finds mine what exists and report the shortfall. | src/folk/actions (mine), src/world (query by type) |
-| Spawning the 9th kit | Roster cap 8 in the kit manager; spawn button disabled at 8; command/palette spawn shows a toast. | src/folk/roster, src/ui/roster |
-| LLM returns valid JSON with an unknown action | zod discriminated union with `.strict()` rejects; the error is appended and the request retried once; a second failure → ScriptedBrain for the turn + fallback badge. | src/brain/schema, src/brain/llm |
-| LLM endpoint unreachable or CORS-blocked | Transport errors (network/CORS, timeout, 401, 5xx) skip the validation retry and fall back immediately with the badge; the settings banner names the cause and a hint; 429 → breather line; a circuit breaker skips the LLM for 60 s after 2 consecutive transport failures. Failed calls count against the limiter. | src/brain/llm (errors, breaker), src/ui/settings |
-| localStorage disabled or full | Every access wrapped; on failure switch to an in-memory store for the session and toast once; QuotaExceeded on save → toast, keep playing; warn at 4 MB first. | src/app/persistence, src/ui/toasts |
-| WebGL2 missing | Bootstrap probes `getContext('webgl2')` on a throwaway canvas before importing Three.js; failure renders a static fallback screen. The `nowebgl` Playwright project exercises this path on every CI run. | src/app/bootstrap, src/ui (fallback screen) |
-| Share hash corrupted | Decoder validates seed and edits (zod + checksum); invalid edits are ignored (seed-only), an invalid seed falls back to the saved world if present, else a fresh one; toast "Share link was damaged". A valid link loads its world for the session and leaves the saved world untouched until the first edit. | src/app/share, src/app/persistence |
-| 3-phrase command where phrase 2 fails | Parse-time: any unparsable phrase rejects the whole command; the reply names the phrase and suggests the two closest commands. Run-time: a failing phrase (unreachable, nothing to mine, empty inventory, occupied cell) is reported in character and the queue continues with the next phrase. Documented in README. | src/brain/scripted (parser), src/folk/actions (queue) |
-| Page hidden | `visibilitychange` pauses the fixed-step loop (which owns the day/night clock) and the ambient-chatter timer and flushes any pending save; on resume the accumulator is reset so there is no catch-up burst. | src/app/loop, src/render (samples the clock), src/chat/ambient, src/app/persistence |
+| R10 edge case                                   | Handling rule                                                                                                                                                                                                                                                                                                                                                                                                          | Module(s)                                                                           |
+| ----------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------- |
+| Command names a kit that does not exist         | A leading token is a name only when followed by a comma or when it is not a grammar keyword, so verbs are never stolen. Names resolve against the roster (case-insensitive, then edit distance ≤2). No match → nothing is queued; the chat reply says "No kit called X" and names the closest roster name. The selected kit is resolved in `src/app` and passed into `respond()`, so `src/brain` never reads UI state. | src/brain/scripted (parser), src/app (selection), src/chat (reply)                  |
+| Two kits sent to the same cell                  | Cells are not reserved and A* ignores kits (R4). In the movement step, an occupied next cell → wait 0.5 s then replan; after 3 waits, or on arriving at an occupied target, the kit stops on the nearest free adjacent cell and says so.                                                                                                                                                                               | src/folk/actions (movement step)                                                    |
+| Block removed under a walking kit               | World emits a block-change event; the entity falls (any depth, no damage); the current path is invalidated and replanned from the landing cell.                                                                                                                                                                                                                                                                        | src/world (events), src/folk/entity (gravity), src/folk/actions (replan)            |
+| Target cell occupied when placing               | Precondition fails → wait 0.5 s, retry up to 3 times, then decline in character and drop the action.                                                                                                                                                                                                                                                                                                                   | src/folk/actions (place)                                                            |
+| Inventory empty when placing                    | Checked before pathing; the kit declines in character; action dropped; queue continues.                                                                                                                                                                                                                                                                                                                                | src/folk/inventory, src/folk/actions, src/chat (templates)                          |
+| Mine request for a type absent within radius 16 | Nearest-N search finds 0 → in-character "none nearby"; if candidates exist but the nearest is unreachable, up to 5 nearest are tried before "none reachable"; action dropped; queue continues. Partial finds mine what exists and report the shortfall.                                                                                                                                                                | src/folk/actions (mine), src/world (query by type)                                  |
+| Spawning the 9th kit                            | Roster cap 8 in the kit manager; spawn button disabled at 8; command/palette spawn shows a toast.                                                                                                                                                                                                                                                                                                                      | src/folk/roster, src/ui/roster                                                      |
+| LLM returns valid JSON with an unknown action   | zod discriminated union with `.strict()` rejects; the error is appended and the request retried once; a second failure → ScriptedBrain for the turn + fallback badge.                                                                                                                                                                                                                                                  | src/brain/schema, src/brain/llm                                                     |
+| LLM endpoint unreachable or CORS-blocked        | Transport errors (network/CORS, timeout, 401, 5xx) skip the validation retry and fall back immediately with the badge; the settings banner names the cause and a hint; 429 → breather line; a circuit breaker skips the LLM for 60 s after 2 consecutive transport failures. Failed calls count against the limiter.                                                                                                   | src/brain/llm (errors, breaker), src/ui/settings                                    |
+| localStorage disabled or full                   | Every access wrapped; on failure switch to an in-memory store for the session and toast once; QuotaExceeded on save → toast, keep playing; warn at 4 MB first.                                                                                                                                                                                                                                                         | src/app/persistence, src/ui/toasts                                                  |
+| WebGL2 missing                                  | Bootstrap probes `getContext('webgl2')` on a throwaway canvas before importing Three.js; failure renders a static fallback screen. The `nowebgl` Playwright project exercises this path on every CI run.                                                                                                                                                                                                               | src/app/bootstrap, src/ui (fallback screen)                                         |
+| Share hash corrupted                            | Decoder validates seed and edits (zod + checksum); invalid edits are ignored (seed-only), an invalid seed falls back to the saved world if present, else a fresh one; toast "Share link was damaged". A valid link loads its world for the session and leaves the saved world untouched until the first edit.                                                                                                          | src/app/share, src/app/persistence                                                  |
+| 3-phrase command where phrase 2 fails           | Parse-time: any unparsable phrase rejects the whole command; the reply names the phrase and suggests the two closest commands. Run-time: a failing phrase (unreachable, nothing to mine, empty inventory, occupied cell) is reported in character and the queue continues with the next phrase. Documented in README.                                                                                                  | src/brain/scripted (parser), src/folk/actions (queue)                               |
+| Page hidden                                     | `visibilitychange` pauses the fixed-step loop (which owns the day/night clock) and the ambient-chatter timer and flushes any pending save; on resume the accumulator is reset so there is no catch-up burst.                                                                                                                                                                                                           | src/app/loop, src/render (samples the clock), src/chat/ambient, src/app/persistence |
 
-## 5. Measurements and evidence (filled from M1 on)
+## 5. Measurements and evidence
 
-- Frame-time table per milestone: chip / OS / browser, p50, p95, max, draw calls, path nodes/frame, remesh ms.
-- Controls table: control → test type (e2e / CDP touch / manual) → status → date.
-- R9 traceability: spec line → test file.
-- R11 evidence: item → pass/partial/fail → evidence.
-- Litmus protocol outcome with the four screenshots.
+Still to come: frame-time tables from M1 on, the full R5 controls table, R9 traceability, the R11 evidence table, and the litmus protocol with its four screenshots.
+
+### M0 (2026-10-09, Apple Silicon, Node 20.20.2, Chromium 156 headless)
+
+| Measurement                                         | Value                         | Budget  | Status                                            |
+| --------------------------------------------------- | ----------------------------- | ------- | ------------------------------------------------- |
+| Bundle, gzipped JS + CSS, excluding atlas and fonts | 123.4 KB                      | 600 KB  | pass, 20.6 % used                                 |
+| of which Three.js                                   | 117.6 KB                      | —       | the renderer chunk, not downloaded without WebGL2 |
+| Self-hosted fonts                                   | 16.7 KB                       | —       | two latin-subset woff2 files                      |
+| Unit tests                                          | 6 passed                      | —       | pass                                              |
+| End-to-end tests                                    | 3 passed across both projects | —       | pass                                              |
+| `npm audit`                                         | 0 vulnerabilities             | no high | pass                                              |
+
+M0 checks that are automated rather than measured: the originality word check, the folder README limit, the import boundary fixture, the WebGL2 fallback path, and the absence of console errors and unhandled rejections in both e2e projects.

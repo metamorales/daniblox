@@ -1,0 +1,154 @@
+/*
+ * Daniblox design tokens — "Pocket Meadow" (docs/plan.md section 3).
+ * Every text and border pair below was checked against WCAG AA in both themes.
+ */
+
+@font-face {
+  font-family: 'Pixelify Sans';
+  src: url('/fonts/pixelify-sans-latin.woff2') format('woff2');
+  font-weight: 400 700;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Press Start 2P';
+  src: url('/fonts/press-start-2p-latin.woff2') format('woff2');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+:root {
+  /* World palette — also used by the renderer, kept here as the single source. */
+  --block-crumb: #e6a0a4;
+  --block-clover: #86cf6c;
+  --block-pebble: #c3c7d6;
+  --block-shell: #f6e4c3;
+  --block-bark: #9c6243;
+  --block-sprout: #3fae7f;
+  --block-tile: #4f8fd8;
+  --block-gem: #ff5fa2;
+
+  --sky-day: #8fd6f0;
+  --sky-dusk: #f3a97e;
+  --cream: #fdf3e2;
+  --plum: #221d33;
+  --ink: #332a4a;
+
+  /* Type */
+  --font-display: 'Press Start 2P', ui-monospace, monospace;
+  --font-body: 'Pixelify Sans', ui-sans-serif, system-ui, sans-serif;
+
+  /* Light theme is the default. */
+  --bg: #fdf3e2;
+  --surface: #ffffff;
+  --text: #332a4a;
+  --muted: #605475;
+  --accent: #c42c6e;
+  --on-accent: #fdf3e2;
+  --border: #8d8099;
+
+  --radius: 0;
+  --focus-ring: 3px solid var(--accent);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) {
+    --bg: #221d33;
+    --surface: #2f2746;
+    --text: #f7eddc;
+    --muted: #bcb0cf;
+    --accent: #ff8ec0;
+    --on-accent: #221d33;
+    --border: #8579a3;
+  }
+}
+
+:root[data-theme='dark'] {
+  --bg: #221d33;
+  --surface: #2f2746;
+  --text: #f7eddc;
+  --muted: #bcb0cf;
+  --accent: #ff8ec0;
+  --on-accent: #221d33;
+  --border: #8579a3;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  height: 100%;
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font-body);
+  font-size: 16px;
+  line-height: 1.5;
+}
+
+body {
+  overflow: hidden;
+}
+
+:focus-visible {
+  outline: var(--focus-ring);
+  outline-offset: 2px;
+}
+
+/* Pixel art must never be smoothed. */
+canvas {
+  display: block;
+  image-rendering: pixelated;
+}
+
+/* --- Static WebGL2 fallback screen (markup lives in index.html) --- */
+
+.fallback {
+  position: fixed;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  overflow: auto;
+  background: var(--bg);
+}
+
+.fallback[hidden] {
+  display: none;
+}
+
+.fallback__card {
+  max-width: 34rem;
+  padding: 24px;
+  border: 3px solid var(--border);
+  background: var(--surface);
+}
+
+.fallback__gem {
+  image-rendering: pixelated;
+}
+
+.fallback__title {
+  font-family: var(--font-display);
+  font-size: 24px;
+  line-height: 1.4;
+  margin: 12px 0 16px;
+}
+
+.fallback__lead {
+  font-weight: 700;
+  margin-top: 0;
+}
+
+.fallback__foot {
+  color: var(--muted);
+  margin-bottom: 0;
+}
+
+.fallback ul {
+  padding-left: 1.25rem;
+}

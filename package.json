@@ -1,0 +1,47 @@
+{
+  "name": "daniblox",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "A cozy browser voxel sandbox where you direct kits as agents.",
+  "license": "MIT",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc --noEmit && vite build",
+    "preview": "vite preview",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "e2e": "playwright test",
+    "lint": "npm run check:words && npm run check:readmes && npm run check:boundary && eslint . && prettier --check .",
+    "format": "prettier --write .",
+    "size": "node tools/bundle-size.mjs",
+    "check:words": "node tools/check-words.mjs",
+    "check:readmes": "node tools/check-readmes.mjs",
+    "check:boundary": "node tools/check-boundary.mjs"
+  },
+  "dependencies": {
+    "@preact/signals": "^2.0.1",
+    "idb-keyval": "^6.2.1",
+    "preact": "^10.26.4",
+    "simplex-noise": "^4.0.3",
+    "three": "^0.180.0",
+    "zod": "^3.24.2"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.22.0",
+    "@playwright/test": "^1.51.0",
+    "@preact/preset-vite": "^2.10.1",
+    "@types/node": "^20.17.24",
+    "@types/three": "^0.180.0",
+    "eslint": "^9.22.0",
+    "globals": "^16.0.0",
+    "prettier": "^3.5.3",
+    "typescript": "^5.8.2",
+    "typescript-eslint": "^8.26.1",
+    "vite": "^6.2.1",
+    "vitest": "^4.1.11"
+  }
+}

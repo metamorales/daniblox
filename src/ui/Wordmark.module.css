@@ -1,0 +1,26 @@
+/* Wordmark: cream pixel letters on a gem slab with a hard offset shadow. */
+
+.wordmark {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.1em;
+  padding: 0.55em 0.7em;
+  background: var(--block-gem);
+  border: 3px solid var(--ink);
+  color: var(--cream);
+  font-family: var(--font-display);
+  font-size: var(--wordmark-size, 16px);
+  line-height: 1;
+  letter-spacing: 0.08em;
+  text-shadow: 2px 2px 0 var(--ink);
+  user-select: none;
+}
+
+/* The gem stands in for the "O". Sized in em so it tracks the letters. */
+.gem {
+  width: 1.15em;
+  height: 1.15em;
+  margin-inline: 0.06em;
+  /* Matches the letters' drop shadow without needing a second SVG copy. */
+  filter: drop-shadow(2px 2px 0 var(--ink));
+}
