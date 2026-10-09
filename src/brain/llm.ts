@@ -36,6 +36,7 @@ export interface LlmSettings {
 
 export type FallbackReason =
   | 'invalid-twice'
+  | 'blocked-local'
   | 'rate-limited'
   | 'timeout'
   | 'network'
@@ -71,6 +72,8 @@ const EXPLAIN: Record<FallbackReason, string> = {
   timeout: 'The model took more than ten seconds, so the question was dropped.',
   network:
     'The game could not reach that address. Check the base URL, and that the server allows this page to call it.',
+  'blocked-local':
+    'Browsers will not let a page served over HTTPS call a model on your own machine. Either run Daniblox locally, or use a hosted provider here.',
   unauthorised: 'That key was refused. Check it, or clear it to use a local server.',
   'server-error': 'The model endpoint returned an error.',
   'breaker-open': 'Two failures in a row, so the model is being left alone for a minute.',
@@ -161,7 +164,7 @@ export class LlmBrain implements Brain {
       }
       // A blocked cross-origin request and an unreachable host look the same
       // from here; the message names both so the player can check either.
-      return { text: null, failure: 'network' };
+      return { text: null, failure: this.localFromSecurePage() ? 'blocked-local' : 'network' };
     } finally {
       clearTimeout(timer);
     }
@@ -273,6 +276,14 @@ export class LlmBrain implements Brain {
     return this.fallback.reply(request);
   }
 
+  private localFromSecurePage(): boolean {
+    try {
+      return globalThis.location.protocol === 'https:' && isLocalAddress(this.settings.baseUrl);
+    } catch {
+      return false;
+    }
+  }
+
   private report(partial: Pick<BrainStatus, 'mode' | 'reason' | 'error'>): void {
     this.lastStatus = {
       ...partial,
@@ -281,6 +292,15 @@ export class LlmBrain implements Brain {
     };
     this.events.onStatus?.(this.lastStatus);
   }
+}
+
+/**
+ * A page served over HTTPS is not allowed to call a model running on the
+ * player's own machine: browsers treat it as reaching into a private network.
+ * It looks identical to an unreachable host, so say which it probably is.
+ */
+function isLocalAddress(url: string): boolean {
+  return /^https?:\/\/(localhost|127\.0\.0\.1|\[::1\]|0\.0\.0\.0)(:|\/|$)/i.test(url.trim());
 }
 
 function trimSlash(url: string): string {

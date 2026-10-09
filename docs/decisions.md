@@ -198,3 +198,9 @@ Why: the placeholder is also a list item, so counting list items was off by one 
 
 What: a fixture flag lets a test allow browser-generated resource errors.
 Why: the browser logs a refused request by itself and the page cannot silence it. Without the flag, deliberately testing a failure would fail on the noise it was meant to cause.
+
+## M5-5 — A local model cannot be reached from the deployed site (2026-10-09)
+
+What: a page served over HTTPS may not call http://localhost. Chrome treats it as a public page reaching into a private network and refuses before the request leaves. Verified both ways: the deployed site throws, the same build served locally gets a 200.
+Why it matters: the obvious thing to try, opening the demo link and pointing it at Ollama, cannot work, and the generic "could not reach that address" was misleading.
+What was done: that case is now detected and named, and the banner tells the player to either run Daniblox locally or use a hosted provider on the deployed site. There is no fix from inside the page; this is the browser doing its job.

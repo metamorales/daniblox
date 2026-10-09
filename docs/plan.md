@@ -270,6 +270,20 @@ Still to come: frame-time tables from M1 on, the full R5 controls table, R9 trac
 | End-to-end tests                                    | 3 passed across both projects | —       | pass                                              |
 | `npm audit`                                         | 0 vulnerabilities             | no high | pass                                              |
 
+### M5 live model check (2026-10-09, Apple Silicon)
+
+Checked against a real endpoint: Ollama 0.40.2 serving qwen2.5:7b, Apache 2.0, running locally.
+
+| Case                                | Result                                                                                              |
+| ----------------------------------- | --------------------------------------------------------------------------------------------------- |
+| Plain request, served locally       | Pass. "it feels a bit bare and gloomy round here" became a planted forest.                          |
+| Indirect request, no command words  | Pass. She picked a sensible action herself.                                                         |
+| Cold model, first call              | Pass. Slow but inside the limit once the file is in the page cache.                                 |
+| Address with nothing listening      | Pass. Fell back to her own words, banner named the cause, command still carried out.                |
+| Model name that does not exist      | Pass. Same, with a different banner.                                                                |
+| Deployed site calling a local model | **Blocked by the browser**, by design. Detected and explained in the banner. See decisions.md M5-5. |
+| Anthropic endpoint                  | Not yet checked live; needs a key. Request shape is covered by tests.                               |
+
 ### M1 (2026-10-09, Apple Silicon, Chromium 156 on the real GPU, 1920x1080)
 
 | Measurement                          | Value                       | Budget                    | Status                                      |

@@ -312,3 +312,41 @@ describe('the anthropic shape', () => {
     expect(output.say).toBe('Hold on to something.');
   });
 });
+
+describe('a local model from a secure page', () => {
+  it('says plainly that the browser blocked it, rather than blaming the address', async () => {
+    vi.stubGlobal('location', { protocol: 'https:' });
+    const { brain } = brainWith(
+      vi.fn(async () => {
+        throw new TypeError('Failed to fetch');
+      }) as unknown as typeof fetch,
+    );
+    await brain.respond(request());
+    expect(brain.status.reason).toBe('blocked-local');
+    expect(brain.status.error).toMatch(/run daniblox locally|hosted provider/i);
+  });
+
+  it('blames the address when the page is not secure', async () => {
+    vi.stubGlobal('location', { protocol: 'http:' });
+    const { brain } = brainWith(
+      vi.fn(async () => {
+        throw new TypeError('Failed to fetch');
+      }) as unknown as typeof fetch,
+    );
+    await brain.respond(request());
+    expect(brain.status.reason).toBe('network');
+  });
+
+  it('blames the address for a hosted endpoint, even on a secure page', async () => {
+    vi.stubGlobal('location', { protocol: 'https:' });
+    vi.stubGlobal('fetch', async () => {
+      throw new TypeError('Failed to fetch');
+    });
+    const brain = new LlmBrain(
+      { ...SETTINGS, baseUrl: 'https://api.example.com/v1' },
+      new ScriptedBrain(),
+    );
+    await brain.respond(request());
+    expect(brain.status.reason).toBe('network');
+  });
+});
